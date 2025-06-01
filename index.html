@@ -13,6 +13,9 @@
   <!-- html2canvas + jsPDF bundle -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Certifique-se de ter incluído o jsPDF (bundle) em seu HTML -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 
   <!-- CSS Externo (ou inline) -->
   <link rel="stylesheet" href="estilos.css" />
@@ -203,12 +206,42 @@
             <tbody></tbody>
           </table>
         </div>
+<!-- Mapa dos Postes -->
+<!-- Mapa dos Postes -->
+<h3 class="map-title">📍 Mapa dos Postes</h3>
 
-        <!-- Mapa dos Postes -->
-        <h3 class="map-title">📍 Mapa dos Postes</h3>
-        <div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
-      </div>
-      <!-- Fim do conteúdo capturado -->
+<!-- Farol de status (amarelo = em andamento, vermelho = pendente) -->
+<div style="display: flex; gap: 16px; margin-bottom: 8px; align-items: center;">
+  <div style="display: flex; align-items: center;">
+    <span style="
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      background-color: #ffc107; /* amarelo */
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 1px rgba(0,0,0,0.2);
+    "></span>
+    Em andamento
+  </div>
+  <div style="display: flex; align-items: center;">
+    <span style="
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      background-color: #dc3545; /* vermelho */
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 1px rgba(0,0,0,0.2);
+    "></span>
+    Concluido
+  </div>
+</div>
+
+<div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
+<!-- Fim do conteúdo capturado -->
+
+
 
       <!-- Container Power BI (invisível até clicar) -->
       <div id="powerbiContainer" style="display:none; margin:16px 0; position:relative;">
@@ -800,94 +833,201 @@
       }
     }
 
-    async function baixarPDFModelo() {
-      const docs = (listaVisivel?.length ? listaVisivel : todosOsPostes) || [];
-      if (!docs.length) {
-        alert("❌ Nenhum poste disponível para gerar o PDF.");
-        return;
-      }
-      // 1) Carrega miniaturas como DataURLs
-      const urls = [...new Set(docs.flatMap(p => [p.foto1, p.foto2, p.foto3]).filter(u => u))];
-      const imgMap = {};
-      await Promise.all(urls.map(async u => {
-        const data = await toDataURL(u);
-        if (data) imgMap[u] = data;
-      }));
+   /**
+ * Converte uma URL remota (Firebase Storage) em Base64.
+ * @param {string} url - URL completa do Storage (por ex. "https://firebasestorage.googleapis.com/...")
+ * @returns {Promise<string|null>} - string "data:image/jpeg;base64,..." ou null em caso de falha
+ */
+async function toDataURL(url) {
+  try {
+    console.log("[toDataURL] Iniciando fetch da URL:", url);
+    const response = await fetch(url, { mode: "cors" });
+    console.log("[toDataURL] status da resposta:", response.status, response.ok);
 
-      // 2) Instancia jsPDF
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-      const pageW = doc.internal.pageSize.getWidth();
-      const margin = 40;
-      const lineH = 18;
-      const fTitle = 18, fText = 12;
-
-      docs.forEach((p, i) => {
-        if (i) doc.addPage();
-        let y = margin;
-        // Cabeçalho
-        doc.setFontSize(fTitle);
-        doc.setFont("helvetica","bold");
-        doc.text("Relatório de Postes Atbuilt", pageW/2, y, { align:"center" });
-        y += 30;
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(100);
-        doc.line(margin, y, pageW-margin, y);
-        y += 25;
-        // Nº
-        doc.setFontSize(fText);
-        doc.setFont("helvetica","normal");
-        doc.text(`N° ${i+1}`, margin, y);
-        y += lineH;
-        // Campos
-        const campos = [
-          ["Data", formatarDataBR(p.dataLancamento||"") ],
-          ["ID Projeto", p.idProjeto||""],
-          ["PG", p.codigoPoste||""],
-          ["Poste Primário", p.postePrimario||""],
-          ["Estrutura Primária", p.estruturaPrimaria||""],
-          ["Poste Secundário", p.posteSecundario||""],
-          ["Estrutura Secundária", p.estruturaSecundaria||""],
-          ["Linha Viva", p.linhaViva||""],
-          ["Podas", p.servicosPodas||""],
-          ["Observações", p.observacoes||""],
-          ["Lat/Lng", (p.latitude||"") + (p.latitude&&p.longitude ? " - " : "") + (p.longitude||"")],
-          ["Usuário", p.usuario||""],
-          ["Status", p.status||""]
-        ];
-        campos.forEach(([lbl,val]) => {
-          doc.setFont("helvetica","bold");
-          doc.text(`${lbl}:`, margin, y);
-          doc.setFont("helvetica","normal");
-          const xVal = margin + doc.getTextWidth(`${lbl}: `) + 5;
-          const maxW = pageW - margin - xVal;
-          const split = doc.splitTextToSize(val, maxW);
-          doc.text(split, xVal, y);
-          y += lineH * split.length;
-        });
-        y += 10;
-        // Miniaturas
-        const imgSize = 80; 
-        const space = 10;
-        let xImg = margin;
-        [p.foto1,p.foto2,p.foto3].forEach(u => {
-          if (u && imgMap[u]) {
-            doc.addImage(imgMap[u], "JPEG", xImg, y, imgSize, imgSize);
-          } else if (u) {
-            doc.setDrawColor(200);
-            doc.rect(xImg, y, imgSize, imgSize);
-          }
-          xImg += imgSize + space;
-        });
-      });
-
-      // Salvar
-      const hoje = new Date();
-      const dd = String(hoje.getDate()).padStart(2,"0");
-      const mm = String(hoje.getMonth()+1).padStart(2,"0");
-      const yyyy = hoje.getFullYear();
-      doc.save(`postes_${dd}-${mm}-${yyyy}.pdf`);
+    if (!response.ok) {
+      console.warn("[toDataURL] fetch retornou ok=false para URL:", url);
+      return null;
     }
+
+    const blob = await response.blob();
+    console.log("[toDataURL] Blob recebido (bytes):", blob.size);
+
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // reader.result será "data:image/jpeg;base64,/9j/4AAQSkZJRgA..."
+        console.log("[toDataURL] FileReader result (tamanho):", reader.result.length);
+        resolve(reader.result.toString());
+      };
+      reader.onerror = (err) => {
+        console.error("[toDataURL] FileReader error para URL:", url, err);
+        reject(null);
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.error("[toDataURL] Erro no fetch ou na conversão:", url, err);
+    return null;
+  }
+}
+
+/**
+ * Gera e baixa um PDF contendo todos os "postes" em docs, com
+ * miniaturas das imagens (foto1, foto2, foto3) convertidas em Base64.
+ */
+async function baixarPDFModelo() {
+  // 'listaVisivel' ou 'todosOsPostes' devem ser arrays de objetos no formato:
+  // {
+  //   dataLancamento: "01/06/2025 20:08:42",
+  //   idProjeto: "dsisj",
+  //   codigoPoste: "xx",
+  //   postePrimario: "11/1500R.",
+  //   estruturaPrimaria: "B1/3-CCL",
+  //   posteSecundario: "8/200 EXISTENTE.",
+  //   estruturaSecundaria: "ITA-IMR, IT1",
+  //   linhaViva: "Inst est cruz…",
+  //   servicosPodas: "Corte De Árvore…",
+  //   observacoes: "sjsjsj",
+  //   latitude: "-8.6384811",
+  //   longitude: "-35.2697999",
+  //   usuario: "luizvicentemobile@gmail.com",
+  //   status: "",
+  //   foto1: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto1.jpg?alt=media&token=…",
+  //   foto2: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto2.jpg?alt=media&token=…",
+  //   foto3: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto3.jpg?alt=media&token=…"
+  // }
+
+  const docs = (listaVisivel?.length ? listaVisivel : todosOsPostes) || [];
+  if (!docs.length) {
+    alert("❌ Nenhum poste disponível para gerar o PDF.");
+    return;
+  }
+
+  // 1) Extrai URLs únicas de fotos
+  const urls = [
+    ...new Set(
+      docs
+        .flatMap((p) => [p.foto1, p.foto2, p.foto3])
+        .filter((u) => typeof u === "string" && u.trim() !== "")
+    ),
+  ];
+  console.log("[baixarPDFModelo] URLs únicas encontradas:", urls);
+
+  // 2) Converte cada URL em Base64 e salva em imgMap: { url → base64 }
+  const imgMap = {};
+  await Promise.all(
+    urls.map(async (u) => {
+      console.log("[baixarPDFModelo] Convertendo URL em Base64:", u);
+      const b64 = await toDataURL(u);
+      if (b64) {
+        imgMap[u] = b64;
+        console.log("[baixarPDFModelo] Conversão bem-sucedida para URL:", u);
+      } else {
+        console.warn("[baixarPDFModelo] Falhou ao converter para Base64:", u);
+      }
+    })
+  );
+  console.log("[baixarPDFModelo] Mapeamento final imgMap:", imgMap);
+
+  // 3) Instancia jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const lineH = 18;
+  const fTitle = 18,
+    fText = 12;
+
+  // 4) Para cada poste em 'docs', gera uma página no PDF
+  docs.forEach((p, i) => {
+    if (i > 0) doc.addPage();
+
+    let y = margin;
+    // --- Cabeçalho ---
+    doc.setFontSize(fTitle);
+    doc.setFont("helvetica", "bold");
+    doc.text("Relatório de Postes Atbuilt", pageW / 2, y, { align: "center" });
+    y += 30;
+
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(100);
+    doc.line(margin, y, pageW - margin, y);
+    y += 25;
+
+    // --- Nº e Data ---
+    doc.setFontSize(fText);
+    doc.setFont("helvetica", "normal");
+    doc.text(`N° ${i + 1}`, margin, y);
+    y += lineH;
+
+    // --- Campos de texto ---
+    const campos = [
+      ["Data", formatarDataBR(p.dataLancamento || "")],
+      ["ID Projeto", p.idProjeto || ""],
+      ["PG", p.codigoPoste || ""],
+      ["Poste Primário", p.postePrimario || ""],
+      ["Estrutura Primária", p.estruturaPrimaria || ""],
+      ["Poste Secundário", p.posteSecundario || ""],
+      ["Estrutura Secundária", p.estruturaSecundaria || ""],
+      ["Linha Viva", p.linhaViva || ""],
+      ["Podas", p.servicosPodas || ""],
+      ["Observações", p.observacoes || ""],
+      [
+        "Lat/Lng",
+        (p.latitude || "") +
+          (p.latitude && p.longitude ? " - " : "") +
+          (p.longitude || ""),
+      ],
+      ["Usuário", p.usuario || ""],
+      ["Status", p.status || ""],
+    ];
+
+    campos.forEach(([lbl, val]) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${lbl}:`, margin, y);
+
+      doc.setFont("helvetica", "normal");
+      const prefix = `${lbl}: `;
+      const xVal = margin + doc.getTextWidth(prefix) + 5;
+      const maxW = pageW - margin - xVal;
+      const split = doc.splitTextToSize(val, maxW);
+      doc.text(split, xVal, y);
+      y += lineH * split.length;
+    });
+
+    y += 10;
+
+    // --- Desenho das miniaturas (foto1, foto2, foto3) ---
+    const imgSize = 80; // largura e altura das miniaturas
+    const space = 10; // espaço entre cada miniatura
+    let xImg = margin;
+
+    [p.foto1, p.foto2, p.foto3].forEach((u) => {
+      if (u && imgMap[u]) {
+        // Detecta o tipo de imagem (JPEG ou PNG) a partir da string Base64
+        const mimeType = imgMap[u].startsWith("data:image/png")
+          ? "PNG"
+          : "JPEG";
+        console.log("[baixarPDFModelo] Adicionando imagem no PDF:", u, "tipo:", mimeType);
+        doc.addImage(imgMap[u], mimeType, xImg, y, imgSize, imgSize);
+      } else if (u) {
+        // Se a URL existe mas não foi possível converter, desenha retângulo vazio
+        console.warn("[baixarPDFModelo] Sem Base64 para URL:", u, "- desenhando retângulo");
+        doc.setDrawColor(200);
+        doc.rect(xImg, y, imgSize, imgSize);
+      }
+      xImg += imgSize + space;
+    });
+  });
+
+  // 5) Salvar e baixar o PDF
+  const hoje = new Date();
+  const dd = String(hoje.getDate()).padStart(2, "0");
+  const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+  const yyyy = hoje.getFullYear();
+  doc.save(`postes_${dd}-${mm}-${yyyy}.pdf`);
+}
+
 
     // ---------- Toggle Power BI ----------
     function togglePowerBI() {
