@@ -1,0 +1,447 @@
+/* ====== FONTES ====== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&family=Roboto:wght@400;500;700&display=swap');
+
+/* ====== BASE GLOBAL ====== */
+* {
+  box-sizing: border-box;
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #f9fafb;
+  padding: 20px;
+  color: #2d3748;
+}
+
+/* ====== CONTAINER PRINCIPAL ====== */
+.container {
+  width: 100%;
+  max-width: 100%; /* adaptável */
+  margin: auto;
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  animation: fadeIn 0.4s ease;
+}
+
+/* ====== ANIMAÇÕES ====== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ====== TÍTULOS ====== */
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1e293b;
+  border-left: 4px solid #3b82f6;
+  padding-left: 12px;
+  margin-bottom: 20px;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #334155;
+  margin: 20px 0 12px;
+}
+
+/* ====== HEADER DE FILTROS ====== */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 4px;
+  display: block;
+}
+
+input[type="text"],
+input[type="date"],
+select {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+  min-width: 160px;
+  transition: 0.2s;
+}
+
+input:focus,
+select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  outline: none;
+}
+
+/* ====== BOTÕES ====== */
+button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+/* ====== CONTADOR DE STATUS ====== */
+#contadorStatus {
+  background: #e0f2f1;
+  color: #004d40;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 18px 0 10px;
+  font-weight: 500;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ====== TABELA ====== */
+.scroll-table {
+  overflow-x: auto;
+  max-height: 500px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  scrollbar-width: thin;
+  scrollbar-color: #004d40 #e0e0e0;
+}
+
+.scroll-table::-webkit-scrollbar {
+  height: 8px;
+}
+
+.scroll-table::-webkit-scrollbar-thumb {
+  background: #004d40;
+  border-radius: 8px;
+}
+
+.scroll-table::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  background: #004d40;
+  color: white;
+  padding: 12px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tbody tr:hover {
+  background: #f0f9ff;
+}
+
+td input {
+  border: none;
+  border-bottom: 1px solid #ccc;
+  padding: 4px 6px;
+  width: 100%;
+  font-size: 13px;
+}
+
+/* ====== IMAGENS NA TABELA ====== */
+img {
+  height: 36px;
+  width: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+td i {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ====== CAMPOS DESABILITADOS ====== */
+input[readonly],
+input[disabled],
+select[disabled] {
+  border: none !important;
+  background: transparent !important;
+  color: #334155;
+  font-weight: 500;
+  padding-left: 0;
+}
+
+/* ====== MAPA ====== */
+#map {
+  width: 100%;
+  height: 400px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ====== CONTROLES DO GOOGLE MAPS ====== */
+.gm-control-active,
+.gm-fullscreen-control,
+.gm-svpc {
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid #ccc !important;
+}
+
+.gm-control-active:hover {
+  background: #e0f2f1 !important;
+  border-color: #26a69a !important;
+}
+
+.gm-style .gm-style-mtc {
+  font-family: 'Roboto', sans-serif !important;
+  font-size: 13px !important;
+  background: #ffffff !important;
+  border: 1px solid #cccccc !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.gm-style .gm-style-mtc div {
+  padding: 6px 12px !important;
+  color: #004d40 !important;
+}
+
+.gm-style .gm-style-mtc div:hover {
+  background: #e0f7fa !important;
+  color: #00695c !important;
+}
+
+/* ====== BARRAS DE STATUS ====== */
+.barra-container {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.barra-superior,
+.barra-inferior {
+  height: 8px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.barra-superior::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 70%;
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 6px;
+}
+
+.barra-inferior::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 50%;
+  height: 100%;
+  background: #10b981;
+  border-radius: 6px;
+}
+
+/* ====== LOGIN ====== */
+#loginContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  background: #f5f6fa;
+}
+
+.login-box {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.login-box h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #2c3e50;
+  border-left: 4px solid #1976d2;
+  padding-left: 10px;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #dcdcdc;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: 0.3s;
+}
+
+.login-box input:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.login-box button {
+  width: 100%;
+  padding: 12px 0;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.login-box button:hover {
+  background: #1565c0;
+}
+
+#loginErro {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.rodape {
+  font-size: 12px;
+  color: #888;
+  margin-top: 20px;
+}
+
+/* ====== PAGINAÇÃO ====== */
+#paginacao button {
+  background: #ffffff;
+  border: 1px solid #004d40;
+  color: #004d40;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin: 0 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#paginacao button:hover {
+  background: #004d40;
+  color: white;
+}
+/* ====== RESPONSIVO ====== */
+@media (max-width: 768px) {
+  /* aqui você empilha num coluna só em celulares pequenos */
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .header > div {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  /* de tablets para cima, sempre em linha única */
+  .header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    flex-direction: row; /* garante linha única */
+  }
+  .header > div {
+    width: auto; /* volta ao comportamento original */
+    flex: 0 1 auto;
+  }
+
+
+
+  /* =================== InfoBox Draggable =================== */
+.infobox {
+  cursor: move;        /* mostra que pode arrastar */
+  max-width: 360px;    /* largura máxima (ajuste conforme necessário) */
+  /* Se quiser limitar a altura, use: 
+     max-height: 400px; 
+     overflow-y: auto; 
+  */
+}
+
+/* ================== Botão “Linha Viva” ================== */
+.btn-linhaviva {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 8px; /* opcional, para separar dos outros botões */
+}
+.btn-linhaviva:hover {
+  background-color: #1565c0;
+}
+
+/* ================= Animação de piscar em amarelo ================= */
+@keyframes piscar-amarelo {
+  0%   { background-color: yellow; }
+  50%  { background-color: transparent; }
+  100% { background-color: yellow; }
+}
+.blink-amarelo {
+  animation: piscar-amarelo 1s infinite;
+}
+
+
+
+
+  
+}
+
