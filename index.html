@@ -243,17 +243,21 @@
 
 
 
-      <!-- Container Power BI (invisível até clicar) -->
-      <div id="powerbiContainer" style="display:none; margin:16px 0; position:relative;">
-        <button onclick="togglePowerBI()" style="position:absolute; top:0; right:0;">← Voltar ao Painel</button>
-        <iframe
-          title="Atbuilt Power BI"
-          width="600"
-          height="373.5"
-          src="https://app.powerbi.com/view?r=eyJrIjoiOWRiZTkzYTItZTAxNC00YzU3LWI2MWMtMDBiOWM0OTAxZjgxIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
-          frameborder="0"
-          allowfullscreen>
-        </iframe>
+   
+    <!-- Agora fora de mainContent, o Power BI pode ser exibido sem ser ocultado junto -->
+    <div id="powerbiContainer" style="display:none; margin:16px 0; position:relative;">
+      <button onclick="togglePowerBI()" 
+              style="position:absolute; top:0; right:0;">
+        ← Voltar ao Painel
+      </button>
+      <iframe
+        title="Atbuilt Power BI"
+        width="600"
+        height="373.5"
+        src="https://app.powerbi.com/view?r=eyJrIjoiOWRiZTkzYTItZTAxNC00YzU3LWI2MWMtMDBiOWM0OTM0OWM0OTAxZjgxIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
+        frameborder="0"
+        allowfullscreen>
+      </iframe>
       </div>
     </div>
   </div>
@@ -271,14 +275,14 @@
         fullscreenControl: true,
       });
     }
-  </script>
+  </script>   
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDP1sgTUcHF3ULf9ezZNRbjj2RN-2uNtRQ&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjTYxAl2UqJCh55WB8u0wa5LHuiY152uI&callback=initMap"   
     async defer>
   </script>
   <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
 
-  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF -->
+  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF   AIzaSyBjTYxAl2UqJCh55WB8u0wa5LHuiY152uI  -->
   <script>
     // ---------- Inicialização Firebase ----------
     const firebaseConfig = {
@@ -1030,17 +1034,18 @@ async function baixarPDFModelo() {
 
 
     // ---------- Toggle Power BI ----------
-    function togglePowerBI() {
-      const main = document.getElementById("mainContent");
-      const pbi  = document.getElementById("powerbiContainer");
-      if (pbi.style.display === "none") {
-        main.style.display = "none";
-        pbi.style.display = "block";
-      } else {
-        pbi.style.display = "none";
-        main.style.display = "block";
-      }
-    }
+function togglePowerBI() {
+  const main = document.getElementById("mainContent");
+  const pbi  = document.getElementById("powerbiContainer");
+  if (pbi.style.display === "none") {
+    main.style.display = "none";   // esconde apenas o mainContent
+    pbi.style.display  = "block";  // mostra apenas o powerbiContainer
+  } else {
+    pbi.style.display  = "none";   // esconde o powerbiContainer
+    main.style.display = "block";  // mostra o mainContent
+  }
+}
+
 
     // ---------- Toggle Podas e Linha Viva ----------
     function togglePodas() {
