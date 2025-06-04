@@ -98,6 +98,13 @@
       #tabelaPostes { width: 100%; table-layout: fixed; }
       #tabelaPostes th, #tabelaPostes td { word-wrap: break-word; }
     }
+
+    /* Pequenho ajuste para coluna "Tempo em andamento" */
+    #tabelaPostes td span {
+      display: inline-block;
+      min-width: 50px;
+      text-align: center;
+    }
   </style>
 </head>
 
@@ -127,13 +134,13 @@
 
         <!-- Filtros -->
         <div class="header">
-          <!-- filtro de usuário (igual) -->
+          <!-- filtro de usuário -->
           <div>
             <label for="usuario">E-mail do usuário</label>
             <input type="text" id="usuario" oninput="filtrarPostes()" placeholder="Filtrar por usuário" />
           </div>
 
-          <!-- filtro de PROJETO: agora um input de texto, igual ao filtro de PG -->
+          <!-- filtro de PROJETO: input texto -->
           <div>
             <label for="filtroProjeto">ID do Projeto</label>
             <input
@@ -144,7 +151,7 @@
             />
           </div>
 
-          <!-- filtro de POSTE (continua como input de texto) -->
+          <!-- filtro de POSTE: input texto -->
           <div>
             <label for="filtroPoste">Código do Poste</label>
             <input
@@ -155,7 +162,7 @@
             />
           </div>
 
-          <!-- filtro de STATUS (continua select) -->
+          <!-- filtro de STATUS -->
           <div>
             <label for="filtroStatus">Status</label>
             <select id="filtroStatus" onchange="filtrarPostes()">
@@ -165,7 +172,7 @@
             </select>
           </div>
 
-          <!-- filtro de datas (continua igual) -->
+          <!-- filtro de datas -->
           <div>
             <label for="dataInicial">De:</label>
             <input type="date" id="dataInicial" onchange="filtrarPostes()" />
@@ -214,6 +221,7 @@
                 <th>Lng</th>
                 <th>Usuário</th>
                 <th>Status</th>
+                <th>Tempo em andamento</th> <!-- Nova coluna -->
                 <th>Ações</th>
                 <th>Excluir</th>
               </tr>
@@ -256,29 +264,25 @@
     </div>
     <!-- fim #mainContent -->
 
-    <!-- Container do Power BI (fora de #mainContent) -->
-    <div id="powerbiContainer" style="display:none; width:100%; height:80vh; position:relative;">
-      <button
-        onclick="togglePowerBI()"
-        style="position:absolute; top:16px; right:16px; z-index:10;
-               background:#1e88e5; color:#fff; border:none; padding:8px 12px;
-               border-radius:4px; cursor:pointer;"
-      >
-        ← Voltar ao Painel
-      </button>
+     <div id="powerbiContainer" style="display: none; width: 100%; height: 80vh; position: relative;">
+    <button
+      onclick="togglePowerBI()"
+      style="position: absolute; top: 16px; right: 16px; z-index: 10;
+             background: #1e88e5; color: #fff; border: none; padding: 8px 12px;
+             border-radius: 4px; cursor: pointer;"
+    >
+      ← Voltar ao Painel
+    </button>
 
-      <iframe
-        title="Atbuilt atual"
-        width="100%"
-        height="100%"
-        src="https://app.powerbi.com/reportEmbed?reportId=SEU_REPORT_ID_AQUI
-             &autoAuth=true
-             &ctid=SEU_TENANT_ID
-             &config=eyJjb250ZW50UGFuZUVuYWJsZWQiOnRydWUsIm5hdlNlbGVjdGVkUGFuZUVuYWJsZWQiOnRydWV9"
-        frameborder="0"
-        allowFullScreen="true"
-        style="border:none;"
-      ></iframe>
+   <iframe
+  title="Atbuilt atual"
+  width="100%"
+  height="100%"
+  src="https://app.powerbi.com/view?r=eyJrIjoiOGU1YzAwZTEtZTViZS00YWY5LThlOWYtMDVhODU2NmMzODMwIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
+  frameborder="0"
+  allowFullScreen="true"
+  style="border: none;"
+></iframe>
     </div>
     <!-- fim #powerbiContainer -->
   </div>
@@ -304,7 +308,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
 
-  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF -->
+  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF + Tempo Decorrido -->
   <script>
     // ---------- Inicialização Firebase ----------
     const firebaseConfig = {
@@ -328,6 +332,20 @@
     let markers = [];
     let mostrandoSomentePodas = false;
     let mostrandoSomenteLinhaViva = false;
+
+    // ---------- Calcular Tempo Decorrido (dias e horas) ----------
+    function calcularTempoDecorrido(dataLancStr) {
+      if (!dataLancStr) return null;
+      // Se dataLancStr estiver no formato "DD/MM/YYYY HH:mm:ss":
+      const partes = dataLancStr.split(/[\s/:]+/).map(Number);
+      const dataLanc = new Date(partes[2], partes[1] - 1, partes[0], partes[3], partes[4], partes[5] || 0);
+      const agora = new Date();
+      const diffMs = agora - dataLanc;
+      if (isNaN(diffMs) || diffMs < 0) return null;
+      const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      return { dias, horas };
+    }
 
     // ---------- Função de Login ----------
     function fazerLogin() {
@@ -369,6 +387,7 @@
         const lista = Object.entries(obj)
           .filter(([, v]) => v !== null)
           .map(([id, data]) => {
+            // converter dataLancamento de string para Date (campo _dataConvertida)
             if (data.dataLancamento && typeof data.dataLancamento === "string") {
               const partes = data.dataLancamento.split(/[\s/:]+/).map(Number);
               if (partes.length >= 5) {
@@ -379,6 +398,7 @@
             }
             return { id, ...data };
           });
+        // ordena do mais recente para o mais antigo
         lista.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
         todosOsPostes = lista;
         paginaAtual = 1;
@@ -391,7 +411,7 @@
       return (txt || "").toString().trim().toLowerCase();
     }
 
-    // ---------- Filtrar + Paginar + Exibir ----------
+    // ---------- Filtrar + Calcular Tempo + Paginar + Exibir ----------
     function filtrarPostes() {
       const filtroProjeto = normalizarTexto(document.getElementById("filtroProjeto")?.value);
       const filtroPoste   = normalizarTexto(document.getElementById("filtroPoste")?.value);
@@ -400,20 +420,17 @@
       const dataInicial   = document.getElementById("dataInicial").value;
       const dataFinal     = document.getElementById("dataFinal").value;
 
+      // filtrar
       let listaFiltrada = todosOsPostes.filter(p => {
         const data = p._dataConvertida;
-
-        // projeto: agora usamos includes(), em vez de ===
+        // projeto: agora usamos includes()
         const okProjeto = !filtroProjeto ||
                           normalizarTexto(p.idProjeto).includes(filtroProjeto);
-
-        // poste: igual (já era includes)
+        // poste: includes()
         const okPoste   = !filtroPoste ||
                           normalizarTexto(p.codigoPoste).includes(filtroPoste);
-
         const okUsuario = !filtroUsuario ||
                           normalizarTexto(p.usuario).includes(filtroUsuario);
-
         const okStatus  = !filtroStatus ||
                           normalizarTexto(p.status) === filtroStatus;
 
@@ -429,8 +446,19 @@
         return okProjeto && okPoste && okUsuario && okStatus && okData;
       });
 
+      // recalculação de tempo decorrido
+      listaFiltrada.forEach(p => {
+        if ((p.status || "").toLowerCase() === "em andamento") {
+          p.tempoDecorrido = calcularTempoDecorrido(p.dataLancamento || "");
+        } else {
+          p.tempoDecorrido = null;
+        }
+      });
+
+      // ordenar do mais recente para mais antigo
       listaFiltrada.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
 
+      // paginar
       const totalPaginas = Math.ceil(listaFiltrada.length / itensPorPagina);
       const inicio = (paginaAtual - 1) * itensPorPagina;
       const fim    = inicio + itensPorPagina;
@@ -458,13 +486,18 @@
       }
     }
 
-    // ---------- Exibir Linhas na Tabela ----------
+    // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
     function exibirPostes(lista) {
       const tbody = document.querySelector("#tabelaPostes tbody");
       tbody.innerHTML = "";
+
       lista.forEach(p => {
-        const tr = document.createElement("tr");
         const status = normalizarTexto(p.status || "em andamento");
+        const tempo = p.tempoDecorrido
+          ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+          : "-";
+
+        const tr = document.createElement("tr");
         tr.innerHTML = `
           <td><span>${p.dataLancamento || ""}</span></td>
           <td><input type="text" value="${p.idProjeto||""}" disabled></td>
@@ -506,6 +539,8 @@
               <option value="concluído"    ${status==="concluído"   ? "selected":""}>Concluído</option>
             </select>
           </td>
+          <!-- Coluna de Tempo em andamento -->
+          <td><span>${tempo}</span></td>
           <td><button onclick="editar(this)">✏️</button></td>
           <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
         `;
@@ -513,9 +548,6 @@
         tbody.appendChild(tr);
       });
     }
-
-    // ... (o restante do seu código de editar, excluir, mapas, PDF etc. permanece idêntico)
-    // ________[ Não altere nada abaixo deste comentário ]________
 
     // ---------- Editar / Salvar / Excluir ----------
     function editar(botao) {
@@ -537,9 +569,16 @@
           const td = el.closest("td");
           if (!td) return;
           const colIndex = Array.from(tr.children).indexOf(td);
-          const bloqueadas = [0, 15]; // Data e Usuário
+          // colIndex 16 é a coluna de Status, 17 seria "Tempo em andamento" (somente exibição), 18 "Ações", 19 "Excluir".
+          // Bloquear edição na coluna 0 (Data) e na coluna 15 (Usuário).
+          const bloqueadas = [0, 15];
           if (!bloqueadas.includes(colIndex)) {
-            el.tagName==="SELECT" ? el.disabled=false : (el.disabled=false, el.readOnly=false);
+            if (el.tagName==="SELECT") {
+              el.disabled = false;
+            } else {
+              el.disabled = false;
+              el.readOnly = false;
+            }
           }
         });
       }
@@ -619,7 +658,7 @@
       botao.textContent = "🗑️";
     }
 
-    // Sumários de Podas e Linha Viva
+    // ---------- Sumários de Podas e Linha Viva ----------
     function somarValor(labelField, statusField, lista) {
       let total = 0;
       lista.forEach(p => {
@@ -642,7 +681,7 @@
       const totalPostes = lista.length;
       const concluidos = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
       const andamento  = lista.filter(p => normalizarTexto(p.status) === "em andamento").length;
-      const comPodas   = lista.filter(p => {
+      const comPodas   = lista.filter(p => { 
         const pod = (p.servicosPodas||"").trim().toLowerCase();
         return pod && pod !== "não recebido";
       }).length;
@@ -661,8 +700,8 @@
         return lv && lv !== "não recebido" && lv !== "selecione os serviços" && st !== "concluído";
       }).length;
       const totalLV   = somarValor("linhaViva", "status", lista);
-      const totalLVf  = totalLV > 0
-                       ? totalLV.toLocaleString("pt-BR", { style:"currency", currency:"BRL"})
+      const totalLVf  = totalLV > 0 
+                       ? totalLV.toLocaleString("pt-BR", { style:"currency", currency:"BRL"}) 
                        : null;
 
       const agora = new Date();
@@ -676,7 +715,7 @@
       document.getElementById("contadorStatus").innerText = msg;
     }
 
-    // Mostrar Mapa com Markers
+    // ---------- Mostrar Mapa com Markers ----------
     function mostrarMapa(lista) {
       const bounds = new google.maps.LatLngBounds();
       map = new google.maps.Map(document.getElementById("map"), {
@@ -727,8 +766,8 @@
               <div>🔗 <b>Poste Secundário:</b> ${p.posteSecundario||"-"}</div>
               <div>⚙️ <b>Estrutura Secundária:</b> ${p.estruturaSecundaria||"-"}</div>
               <div>⚡ <b>Linha Viva:</b> ${p.linhaViva||"-"}</div>
-              ${p.servicosPodas?.trim()
-                ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>`
+              ${p.servicosPodas?.trim() 
+                ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>` 
                 : ``
               }
               <div>📝 <b>Obs.:</b> ${p.observacoes||"-"}</div>
@@ -782,15 +821,21 @@
       if (!bounds.isEmpty()) map.fitBounds(bounds);
     }
 
+    // Abre pop‐up com as três fotos em tamanho maior
     function abrirTabelaCompleta(f1, f2, f3) {
       const html = `
         <html>
           <head>
             <title>Fotos do Poste</title>
             <style>
-              body { font-family: sans-serif; background: #f0f0f0; padding:20px;
-                     display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
-              img { border-radius:10px; border:1px solid #ccc; max-width:90%; height:auto; object-fit:contain; }
+              body {
+                font-family: sans-serif; background: #f0f0f0; padding:20px;
+                display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+              }
+              img {
+                border-radius:10px; border:1px solid #ccc;
+                max-width:90%; height:auto; object-fit:contain;
+              }
             </style>
           </head>
           <body>
@@ -810,17 +855,21 @@
         "Data/Hora","ID Projeto","PG","Poste Primário","Estrutura Primária",
         "Poste Secundário","Estrutura Secundária","Linha Viva","Serviços Podas",
         "Observações","Imagem 1 (URL)","Imagem 2 (URL)","Imagem 3 (URL)",
-        "Latitude","Longitude","Usuário","Status"
+        "Latitude","Longitude","Usuário","Status","Tempo em andamento"
       ];
       const linhas = [headers];
       const fonte = tudo ? todosOsPostes : listaVisivel;
       fonte.forEach(p => {
+        // formatar tempo em andamento para CSV (se existir)
+        const tempo = p.tempoDecorrido
+                      ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+                      : "";
         linhas.push([
           formatarDataBR(p.dataLancamento||""),
           p.idProjeto||"", p.codigoPoste||"", p.postePrimario||"", p.estruturaPrimaria||"",
           p.posteSecundario||"", p.estruturaSecundaria||"", p.linhaViva||"", p.servicosPodas||"",
           p.observacoes||"", p.foto1||"", p.foto2||"", p.foto3||"", p.latitude||"",
-          p.longitude||"", p.usuario||"", p.status||""
+          p.longitude||"", p.usuario||"", p.status||"", tempo
         ]);
       });
       const csv = "\uFEFF" + linhas.map(l => l.map(v => `"${v}"`).join(";")).join("\n");
