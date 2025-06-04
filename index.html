@@ -13,9 +13,6 @@
   <!-- html2canvas + jsPDF bundle -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Certifique-se de ter incluído o jsPDF (bundle) em seu HTML -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 
   <!-- CSS Externo (ou inline) -->
   <link rel="stylesheet" href="estilos.css" />
@@ -122,6 +119,7 @@
 
   <!-- ===== Sistema (após login) ===== -->
   <div id="sistemaContainer" class="sistema-container">
+    <!-- abre container geral -->
     <div id="mainContent" class="container">
       <!-- Início do conteúdo capturado pelo PDF -->
       <div id="pdfContainer">
@@ -169,6 +167,7 @@
           <button id="btnPowerBI" onclick="togglePowerBI()">📊 Power BI</button>
           <button id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
           <button id="btnMostrarLinhaViva" onclick="toggleLinhaViva()">⚡ Mostrar Linha Viva</button>
+          <button onclick="verificarDuplicados()">🔎 Verificar Duplicados</button>
         </div>
 
         <!-- Contador de Status -->
@@ -206,61 +205,63 @@
             <tbody></tbody>
           </table>
         </div>
-<!-- Mapa dos Postes -->
-<!-- Mapa dos Postes -->
-<h3 class="map-title">📍 Mapa dos Postes</h3>
 
-<!-- Farol de status (amarelo = em andamento, vermelho = pendente) -->
-<div style="display: flex; gap: 16px; margin-bottom: 8px; align-items: center;">
-  <div style="display: flex; align-items: center;">
-    <span style="
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      background-color: #ffc107; /* amarelo */
-      border-radius: 50%;
-      margin-right: 6px;
-      box-shadow: 0 0 1px rgba(0,0,0,0.2);
-    "></span>
-    Em andamento
-  </div>
-  <div style="display: flex; align-items: center;">
-    <span style="
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      background-color: #dc3545; /* vermelho */
-      border-radius: 50%;
-      margin-right: 6px;
-      box-shadow: 0 0 1px rgba(0,0,0,0.2);
-    "></span>
-    Concluido
-  </div>
+        <!-- Mapa dos Postes -->
+        <h3 class="map-title">📍 Mapa dos Postes</h3>
+        <div style="display: flex; gap: 16px; margin-bottom: 8px; align-items: center;">
+          <div style="display: flex; align-items: center;">
+            <span style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background-color: #ffc107;
+              border-radius: 50%;
+              margin-right: 6px;
+              box-shadow: 0 0 1px rgba(0,0,0,0.2);
+            "></span>
+            Em andamento
+          </div>
+          <div style="display: flex; align-items: center;">
+            <span style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background-color: #dc3545;
+              border-radius: 50%;
+              margin-right: 6px;
+              box-shadow: 0 0 1px rgba(0,0,0,0.2);
+            "></span>
+            Concluído
+          </div>
+        </div>
+
+        <div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
+      </div>
+      <!-- fim #pdfContainer -->
+    </div>
+    <!-- fim #mainContent -->
+<!-- Container do Power BI (fora de #mainContent) -->
+<div id="powerbiContainer" style="display:none; width:100%; height:80vh; position:relative;">
+  <button
+    onclick="togglePowerBI()"
+    style="position:absolute; top:16px; right:16px; z-index:10;
+           background:#1e88e5; color:#fff; border:none; padding:8px 12px;
+           border-radius:4px; cursor:pointer;"
+  >
+    ← Voltar ao Painel
+  </button>
+
+  <iframe
+    title="Atbuilt atual"
+    width="100%"
+    height="100%"
+    src="https://app.powerbi.com/view?r=eyJrIjoiOWRiZTkzYTItZTAxNC00YzU3LWI2MWMtMDBiOWM0OTAxZjgxIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
+    frameborder="0"
+    allowFullScreen="true"
+    style="border:none;"
+  ></iframe>
 </div>
 
-<div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
-<!-- Fim do conteúdo capturado -->
-
-
-
-   
-    <!-- Agora fora de mainContent, o Power BI pode ser exibido sem ser ocultado junto -->
-    <div id="powerbiContainer" style="display:none; margin:16px 0; position:relative;">
-      <button onclick="togglePowerBI()" 
-              style="position:absolute; top:0; right:0;">
-        ← Voltar ao Painel
-      </button>
-      <iframe
-        title="Atbuilt Power BI"
-        width="600"
-        height="373.5"
-        src="https://app.powerbi.com/view?r=eyJrIjoiOWRiZTkzYTItZTAxNC00YzU3LWI2MWMtMDBiOWM0OTM0OWM0OTAxZjgxIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
-        frameborder="0"
-        allowfullscreen>
-      </iframe>
-      </div>
-    </div>
-  </div>
 
   <!-- initMap para Google Maps -->
   <script>
@@ -275,14 +276,14 @@
         fullscreenControl: true,
       });
     }
-  </script>     
+  </script>
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=initMap"   
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=initMap"
     async defer>
   </script>
   <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
 
-  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF  AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig -->
+  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF -->
   <script>
     // ---------- Inicialização Firebase ----------
     const firebaseConfig = {
@@ -329,7 +330,6 @@
     // ---------- Formatação de Data (DD/MM/YYYY HH:mm:ss) ----------
     function formatarDataBR(dataStr) {
       if (!dataStr) return "";
-      // se já estiver no formato DD/MM/YYYY HH:mm:ss, retorna direto
       if (/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(dataStr)) {
         return dataStr;
       }
@@ -348,7 +348,6 @@
         const lista = Object.entries(obj)
           .filter(([, v]) => v !== null)
           .map(([id, data]) => {
-            // converte dataLancamento (string) em Date
             if (data.dataLancamento && typeof data.dataLancamento === "string") {
               const partes = data.dataLancamento.split(/[\s/:]+/).map(Number);
               if (partes.length >= 5) {
@@ -359,7 +358,6 @@
             }
             return { id, ...data };
           });
-        // ordena do mais recente para o mais antigo
         lista.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
         todosOsPostes = lista;
         popularFiltroProjetos(lista);
@@ -795,10 +793,6 @@
       ];
       const linhas = [headers];
       const fonte = tudo ? todosOsPostes : listaVisivel;
-      if (!fonte || !fonte.length) {
-        // caso queira apenas as linhas visíveis já renderizadas, poderia varrer a tabela,
-        // mas para simplificar usamos listaVisivel mesmo
-      }
       fonte.forEach(p => {
         linhas.push([
           formatarDataBR(p.dataLancamento||""),
@@ -821,231 +815,145 @@
       document.body.removeChild(link);
     }
 
-    // ---------- Geração de PDF no estilo “linha a linha” ----------
-    async function toDataURL(url) {
-      try {
-        const resp = await fetch(url);
-        const blob = await resp.blob();
-        return await new Promise((res, rej) => {
-          const reader = new FileReader();
-          reader.onloadend = () => res(reader.result);
-          reader.onerror = rej;
-          reader.readAsDataURL(blob);
+    function toDataURL(url) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          canvas.getContext("2d").drawImage(img, 0, 0);
+          try {
+            const dataURL = canvas.toDataURL("image/jpeg");
+            resolve(dataURL);
+          } catch (err) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => {
+          resolve(null);
+        };
+        img.src = url;
+      });
+    }
+
+    // ================================
+    // 2) baixarPDFModelo: gera PDF usando somente imagens do Firebase Storage
+    async function baixarPDFModelo() {
+      const docs = (Array.isArray(listaVisivel) && listaVisivel.length)
+                   ? listaVisivel
+                   : (Array.isArray(todosOsPostes) ? todosOsPostes : []);
+      if (!docs.length) {
+        alert("❌ Nenhum poste disponível para gerar o PDF.");
+        return;
+      }
+
+      const urlsFirebase = docs
+        .flatMap(p => [p.foto1, p.foto2, p.foto3])
+        .filter(u => typeof u === "string" && u.includes("firebasestorage.googleapis.com"));
+      const uniqueUrls = [...new Set(urlsFirebase)];
+      const imgMap = {};
+      await Promise.all(
+        uniqueUrls.map(async url => {
+          const base64 = await toDataURL(url);
+          if (base64) imgMap[url] = base64;
+        })
+      );
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 40;
+      const lineH = 18;
+      const fTitle = 18, fText = 12;
+      const imgSize = 80, space = 10;
+
+      docs.forEach((p, i) => {
+        if (i > 0) doc.addPage();
+
+        let y = margin;
+        doc.setFontSize(fTitle);
+        doc.setFont("helvetica", "bold");
+        doc.text("Relatório de Postes Atbuilt", pageW / 2, y, { align: "center" });
+        y += 30;
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(100);
+        doc.line(margin, y, pageW - margin, y);
+        y += 25;
+
+        doc.setFontSize(fText);
+        doc.setFont("helvetica", "normal");
+        doc.text(`N° ${i + 1}`, margin, y);
+        y += lineH;
+
+        const campos = [
+          ["Data", formatarDataBR(p.dataLancamento || "")],
+          ["ID Projeto", p.idProjeto || ""],
+          ["PG", p.codigoPoste || ""],
+          ["Poste Primário", p.postePrimario || ""],
+          ["Estrutura Primária", p.estruturaPrimaria || ""],
+          ["Poste Secundário", p.posteSecundario || ""],
+          ["Estrutura Secundária", p.estruturaSecundaria || ""],
+          ["Linha Viva", p.linhaViva || ""],
+          ["Podas", p.servicosPodas || ""],
+          ["Observações", p.observacoes || ""],
+          ["Lat/Lng", (p.latitude || "") + (p.latitude && p.longitude ? " - " : "") + (p.longitude || "")],
+          ["Usuário", p.usuario || ""],
+          ["Status", p.status || ""],
+        ];
+        campos.forEach(([label, valor]) => {
+          doc.setFont("helvetica", "bold");
+          doc.text(`${label}:`, margin, y);
+          doc.setFont("helvetica", "normal");
+          const prefix = `${label}: `;
+          const xVal = margin + doc.getTextWidth(prefix) + 5;
+          const maxW = pageW - margin - xVal;
+          const splitText = doc.splitTextToSize(valor, maxW);
+          doc.text(splitText, xVal, y);
+          y += lineH * splitText.length;
         });
-      } catch {
-        return null;
-      }
+        y += 10;
+
+        let xImg = margin;
+        [p.foto1, p.foto2, p.foto3].forEach(origUrl => {
+          if (typeof origUrl === "string" && origUrl.includes("firebasestorage.googleapis.com")) {
+            const base64 = imgMap[origUrl];
+            if (base64) {
+              const mimeType = base64.startsWith("data:image/png") ? "PNG" : "JPEG";
+              doc.addImage(base64, mimeType, xImg, y, imgSize, imgSize);
+            } else {
+              doc.setDrawColor(200);
+              doc.rect(xImg, y, imgSize, imgSize);
+            }
+          } else {
+            doc.setDrawColor(200);
+            doc.rect(xImg, y, imgSize, imgSize);
+          }
+          xImg += imgSize + space;
+        });
+      });
+
+      const hoje = new Date();
+      const dd = String(hoje.getDate()).padStart(2, "0");
+      const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+      const yyyy = hoje.getFullYear();
+      const filename = `postes_${dd}-${mm}-${yyyy}.pdf`;
+      doc.save(filename);
     }
-
-   /**
- * Converte uma URL remota (Firebase Storage) em Base64.
- * @param {string} url - URL completa do Storage (por ex. "https://firebasestorage.googleapis.com/...")
- * @returns {Promise<string|null>} - string "data:image/jpeg;base64,..." ou null em caso de falha
- */
-async function toDataURL(url) {
-  try {
-    console.log("[toDataURL] Iniciando fetch da URL:", url);
-    const response = await fetch(url, { mode: "cors" });
-    console.log("[toDataURL] status da resposta:", response.status, response.ok);
-
-    if (!response.ok) {
-      console.warn("[toDataURL] fetch retornou ok=false para URL:", url);
-      return null;
-    }
-
-    const blob = await response.blob();
-    console.log("[toDataURL] Blob recebido (bytes):", blob.size);
-
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        // reader.result será "data:image/jpeg;base64,/9j/4AAQSkZJRgA..."
-        console.log("[toDataURL] FileReader result (tamanho):", reader.result.length);
-        resolve(reader.result.toString());
-      };
-      reader.onerror = (err) => {
-        console.error("[toDataURL] FileReader error para URL:", url, err);
-        reject(null);
-      };
-      reader.readAsDataURL(blob);
-    });
-  } catch (err) {
-    console.error("[toDataURL] Erro no fetch ou na conversão:", url, err);
-    return null;
-  }
-}
-
-/**
- * Gera e baixa um PDF contendo todos os "postes" em docs, com
- * miniaturas das imagens (foto1, foto2, foto3) convertidas em Base64.
- */
-async function baixarPDFModelo() {
-  // 'listaVisivel' ou 'todosOsPostes' devem ser arrays de objetos no formato:
-  // {
-  //   dataLancamento: "01/06/2025 20:08:42",
-  //   idProjeto: "dsisj",
-  //   codigoPoste: "xx",
-  //   postePrimario: "11/1500R.",
-  //   estruturaPrimaria: "B1/3-CCL",
-  //   posteSecundario: "8/200 EXISTENTE.",
-  //   estruturaSecundaria: "ITA-IMR, IT1",
-  //   linhaViva: "Inst est cruz…",
-  //   servicosPodas: "Corte De Árvore…",
-  //   observacoes: "sjsjsj",
-  //   latitude: "-8.6384811",
-  //   longitude: "-35.2697999",
-  //   usuario: "luizvicentemobile@gmail.com",
-  //   status: "",
-  //   foto1: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto1.jpg?alt=media&token=…",
-  //   foto2: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto2.jpg?alt=media&token=…",
-  //   foto3: "https://firebasestorage.googleapis.com/…/postes%2Fxx%2Ffoto3.jpg?alt=media&token=…"
-  // }
-
-  const docs = (listaVisivel?.length ? listaVisivel : todosOsPostes) || [];
-  if (!docs.length) {
-    alert("❌ Nenhum poste disponível para gerar o PDF.");
-    return;
-  }
-
-  // 1) Extrai URLs únicas de fotos
-  const urls = [
-    ...new Set(
-      docs
-        .flatMap((p) => [p.foto1, p.foto2, p.foto3])
-        .filter((u) => typeof u === "string" && u.trim() !== "")
-    ),
-  ];
-  console.log("[baixarPDFModelo] URLs únicas encontradas:", urls);
-
-  // 2) Converte cada URL em Base64 e salva em imgMap: { url → base64 }
-  const imgMap = {};
-  await Promise.all(
-    urls.map(async (u) => {
-      console.log("[baixarPDFModelo] Convertendo URL em Base64:", u);
-      const b64 = await toDataURL(u);
-      if (b64) {
-        imgMap[u] = b64;
-        console.log("[baixarPDFModelo] Conversão bem-sucedida para URL:", u);
-      } else {
-        console.warn("[baixarPDFModelo] Falhou ao converter para Base64:", u);
-      }
-    })
-  );
-  console.log("[baixarPDFModelo] Mapeamento final imgMap:", imgMap);
-
-  // 3) Instancia jsPDF
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 40;
-  const lineH = 18;
-  const fTitle = 18,
-    fText = 12;
-
-  // 4) Para cada poste em 'docs', gera uma página no PDF
-  docs.forEach((p, i) => {
-    if (i > 0) doc.addPage();
-
-    let y = margin;
-    // --- Cabeçalho ---
-    doc.setFontSize(fTitle);
-    doc.setFont("helvetica", "bold");
-    doc.text("Relatório de Postes Atbuilt", pageW / 2, y, { align: "center" });
-    y += 30;
-
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(100);
-    doc.line(margin, y, pageW - margin, y);
-    y += 25;
-
-    // --- Nº e Data ---
-    doc.setFontSize(fText);
-    doc.setFont("helvetica", "normal");
-    doc.text(`N° ${i + 1}`, margin, y);
-    y += lineH;
-
-    // --- Campos de texto ---
-    const campos = [
-      ["Data", formatarDataBR(p.dataLancamento || "")],
-      ["ID Projeto", p.idProjeto || ""],
-      ["PG", p.codigoPoste || ""],
-      ["Poste Primário", p.postePrimario || ""],
-      ["Estrutura Primária", p.estruturaPrimaria || ""],
-      ["Poste Secundário", p.posteSecundario || ""],
-      ["Estrutura Secundária", p.estruturaSecundaria || ""],
-      ["Linha Viva", p.linhaViva || ""],
-      ["Podas", p.servicosPodas || ""],
-      ["Observações", p.observacoes || ""],
-      [
-        "Lat/Lng",
-        (p.latitude || "") +
-          (p.latitude && p.longitude ? " - " : "") +
-          (p.longitude || ""),
-      ],
-      ["Usuário", p.usuario || ""],
-      ["Status", p.status || ""],
-    ];
-
-    campos.forEach(([lbl, val]) => {
-      doc.setFont("helvetica", "bold");
-      doc.text(`${lbl}:`, margin, y);
-
-      doc.setFont("helvetica", "normal");
-      const prefix = `${lbl}: `;
-      const xVal = margin + doc.getTextWidth(prefix) + 5;
-      const maxW = pageW - margin - xVal;
-      const split = doc.splitTextToSize(val, maxW);
-      doc.text(split, xVal, y);
-      y += lineH * split.length;
-    });
-
-    y += 10;
-
-    // --- Desenho das miniaturas (foto1, foto2, foto3) ---
-    const imgSize = 80; // largura e altura das miniaturas
-    const space = 10; // espaço entre cada miniatura
-    let xImg = margin;
-
-    [p.foto1, p.foto2, p.foto3].forEach((u) => {
-      if (u && imgMap[u]) {
-        // Detecta o tipo de imagem (JPEG ou PNG) a partir da string Base64
-        const mimeType = imgMap[u].startsWith("data:image/png")
-          ? "PNG"
-          : "JPEG";
-        console.log("[baixarPDFModelo] Adicionando imagem no PDF:", u, "tipo:", mimeType);
-        doc.addImage(imgMap[u], mimeType, xImg, y, imgSize, imgSize);
-      } else if (u) {
-        // Se a URL existe mas não foi possível converter, desenha retângulo vazio
-        console.warn("[baixarPDFModelo] Sem Base64 para URL:", u, "- desenhando retângulo");
-        doc.setDrawColor(200);
-        doc.rect(xImg, y, imgSize, imgSize);
-      }
-      xImg += imgSize + space;
-    });
-  });
-
-  // 5) Salvar e baixar o PDF
-  const hoje = new Date();
-  const dd = String(hoje.getDate()).padStart(2, "0");
-  const mm = String(hoje.getMonth() + 1).padStart(2, "0");
-  const yyyy = hoje.getFullYear();
-  doc.save(`postes_${dd}-${mm}-${yyyy}.pdf`);
-}
-
 
     // ---------- Toggle Power BI ----------
-function togglePowerBI() {
-  const main = document.getElementById("mainContent");
-  const pbi  = document.getElementById("powerbiContainer");
-  if (pbi.style.display === "none") {
-    main.style.display = "none";   // esconde apenas o mainContent
-    pbi.style.display  = "block";  // mostra apenas o powerbiContainer
-  } else {
-    pbi.style.display  = "none";   // esconde o powerbiContainer
-    main.style.display = "block";  // mostra o mainContent
-  }
-}
-
+    function togglePowerBI() {
+      const main = document.getElementById("mainContent");
+      const pbi  = document.getElementById("powerbiContainer");
+      if (pbi.style.display === "none") {
+        main.style.display = "none";
+        pbi.style.display  = "block";
+      } else {
+        pbi.style.display  = "none";
+        main.style.display = "block";
+      }
+    }
 
     // ---------- Toggle Podas e Linha Viva ----------
     function togglePodas() {
@@ -1069,6 +977,56 @@ function togglePowerBI() {
         mostrarMapa(listaVisivel);
         document.getElementById("btnMostrarPodas").textContent = "🌿 Mostrar Podas";
       }
+    }
+
+    async function verificarDuplicados() {
+      const mapa = new Map();
+      const duplicados = [];
+
+      document.querySelectorAll("#tabelaPostes tbody tr").forEach(tr => {
+        tr.style.backgroundColor = "";
+      });
+
+      todosOsPostes.forEach(p => {
+        const chave = `${(p.idProjeto || "").trim().toLowerCase()}|${(p.codigoPoste || "").trim().toLowerCase()}`;
+        if (mapa.has(chave)) {
+          duplicados.push(p);
+        } else {
+          mapa.set(chave, p.id);
+        }
+      });
+
+      if (duplicados.length === 0) {
+        alert("✅ Nenhum item duplicado encontrado.");
+        return;
+      }
+
+      document.querySelectorAll("#tabelaPostes tbody tr").forEach(tr => {
+        const id = tr.dataset.id;
+        if (duplicados.find(p => p.id === id)) {
+          tr.style.backgroundColor = "#ffcccc";
+        }
+      });
+
+      const simulado = duplicados.map(p => `• ${p.idProjeto} | ${p.codigoPoste} (${p.id})`).join('\n');
+      const confirmarSimulacao = confirm(`⚠️ Foram encontrados ${duplicados.length} registros duplicados com base em Projeto + Código.\n\nVisualização dos que seriam apagados:\n\n${simulado}\n\nDeseja realmente continuar?`);
+
+      if (!confirmarSimulacao) return;
+
+      const confirmarFinal = confirm("❌ Esta ação é irreversível. Confirma a exclusão dos itens destacados?");
+      if (!confirmarFinal) return;
+
+      for (const p of duplicados) {
+        try {
+          await db.ref(`postes/${p.id}`).remove();
+          console.log(`✅ Poste ${p.id} removido`);
+        } catch (err) {
+          console.error(`❌ Erro ao remover ${p.id}`, err);
+        }
+      }
+
+      alert(`🗑️ ${duplicados.length} registros duplicados foram apagados com sucesso.`);
+      carregarPostes();
     }
 
     function toggleLinhaViva() {
