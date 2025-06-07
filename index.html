@@ -716,42 +716,49 @@
     }
 
     // ---------- Mostrar Mapa com Markers ----------
-    function mostrarMapa(lista) {
-      const bounds = new google.maps.LatLngBounds();
-      map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 6,
-        center: { lat:-8.0, lng:-35.0 },
-        gestureHandling: "greedy",
-        zoomControl: true,
-        mapTypeControl: true,
-        mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR, position: google.maps.ControlPosition.TOP_RIGHT },
-        streetViewControl: false,
-        fullscreenControl: true
-      });
-      const geocoder = new google.maps.Geocoder();
+   function mostrarMapa(lista, iconOverride = null) {
+  const bounds = new google.maps.LatLngBounds();
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 6,
+    center: { lat: -8.0, lng: -35.0 },
+    gestureHandling: "greedy",
+    zoomControl: true,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+      position: google.maps.ControlPosition.TOP_RIGHT
+    },
+    streetViewControl: false,
+    fullscreenControl: true
+  });
+  const geocoder = new google.maps.Geocoder();
 
-      // limpa marcadores antigos
-      markers.forEach(m => {
-        if (m.markerInstance) m.markerInstance.setMap(null);
-        if (m.intervalId) clearInterval(m.intervalId);
-      });
-      markers = [];
+  // limpa marcadores antigos
+  markers.forEach(m => {
+    if (m.markerInstance) m.markerInstance.setMap(null);
+    if (m.intervalId) clearInterval(m.intervalId);
+  });
+  markers = [];
 
-      lista.forEach(p => {
-        const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
-        if (isNaN(lat) || isNaN(lng)) return;
+  lista.forEach(p => {
+    const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
+    if (isNaN(lat) || isNaN(lng)) return;
 
-        const st = normalizarTexto(p.status || "");
-        const iconUrl = (st === "" || st === "em andamento")
+    // ícone padrão conforme status
+    const st = normalizarTexto(p.status || "");
+    const defaultIcon = (st === "" || st === "em andamento")
                       ? "andamento.png"
                       : "poste.png";
+    // se tiver override, usa abustro.png
+    const iconUrl = iconOverride || defaultIcon;
 
-        const marker = new google.maps.Marker({
-          position: {lat, lng},
-          map,
-          title: `Poste: ${p.codigoPoste||""}`,
-          icon: { url: iconUrl, scaledSize: new google.maps.Size(32,32) }
-        });
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      title: `Poste: ${p.codigoPoste||""}`,
+      icon: { url: iconUrl, scaledSize: new google.maps.Size(32,32) }
+    });
+
 
         let infoContent = `
           <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
@@ -1026,28 +1033,30 @@
     }
 
     // ---------- Toggle Podas e Linha Viva ----------
-    function togglePodas() {
-      mostrandoSomentePodas = !mostrandoSomentePodas;
-      if (mostrandoSomentePodas) {
-        const lista = todosOsPostes.filter(p => {
-          const pod = (p.servicosPodas||"").trim().toLowerCase();
-          const st  = (p.status||"").trim().toLowerCase();
-          return pod && pod !== "não recebido" && st !== "concluído";
-        });
-        if (!lista.length) {
-          alert("Nenhum poste com serviço de poda em andamento.");
-          mostrandoSomentePodas = false;
-          return;
-        }
-        exibirPostes(lista);
-        mostrarMapa(lista);
-        document.getElementById("btnMostrarPodas").textContent = "📌 Mostrar Todos";
-      } else {
-        exibirPostes(listaVisivel);
-        mostrarMapa(listaVisivel);
-        document.getElementById("btnMostrarPodas").textContent = "🌿 Mostrar Podas";
-      }
+  function togglePodas() {
+  mostrandoSomentePodas = !mostrandoSomentePodas;
+  if (mostrandoSomentePodas) {
+    const lista = todosOsPostes.filter(p => {
+      const pod = (p.servicosPodas||"").trim().toLowerCase();
+      const st  = (p.status||"").trim().toLowerCase();
+      return pod && pod !== "não recebido" && st !== "concluído";
+    });
+    if (!lista.length) {
+      alert("Nenhum poste com serviço de poda em andamento.");
+      mostrandoSomentePodas = false;
+      return;
     }
+    exibirPostes(lista);
+    // Passa 'abustro.png' como override
+    mostrarMapa(lista, 'abustro.png');
+    document.getElementById("btnMostrarPodas").textContent = "📌 Mostrar Todos";
+  } else {
+    exibirPostes(listaVisivel);
+    mostrarMapa(listaVisivel);
+    document.getElementById("btnMostrarPodas").textContent = "🌿 Mostrar Podas";
+  }
+}
+
 
     async function verificarDuplicados() {
       const mapa = new Map();
