@@ -716,7 +716,7 @@
     }
 
     // ---------- Mostrar Mapa com Markers ----------
-   function mostrarMapa(lista, iconOverride = null) {
+function mostrarMapa(lista, iconOverride = null) {
   const bounds = new google.maps.LatLngBounds();
   map = new google.maps.Map(document.getElementById("map"), {
     zoom: 6,
@@ -731,9 +731,10 @@
     streetViewControl: false,
     fullscreenControl: true
   });
+
   const geocoder = new google.maps.Geocoder();
 
-  // limpa marcadores antigos
+  // Limpar marcadores antigos
   markers.forEach(m => {
     if (m.markerInstance) m.markerInstance.setMap(null);
     if (m.intervalId) clearInterval(m.intervalId);
@@ -741,120 +742,148 @@
   markers = [];
 
   lista.forEach(p => {
-    const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
+    const lat = parseFloat(p.latitude);
+    const lng = parseFloat(p.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
 
-    // ícone padrão conforme status
-    const st = normalizarTexto(p.status || "");
-    const defaultIcon = (st === "" || st === "em andamento")
-                      ? "andamento.png"
-                      : "poste.png";
-    // se tiver override, usa abustro.png
-    const iconUrl = iconOverride || defaultIcon;
-
-    const marker = new google.maps.Marker({
+    // Marcador principal: poste.png
+    const marcadorPoste = new google.maps.Marker({
       position: { lat, lng },
       map,
-      title: `Poste: ${p.codigoPoste||""}`,
-      icon: { url: iconUrl, scaledSize: new google.maps.Size(32,32) }
+      title: `Poste: ${p.codigoPoste || ""}`,
+      icon: {
+        url: "poste.png",
+        scaledSize: new google.maps.Size(32, 32)
+      }
     });
 
+    // Marcador de podas: abustro.png (deslocado ~10m para nordeste)
+    const podas = (p.servicosPodas || "").trim().toLowerCase();
+    const temPodas = podas && podas !== "não recebido";
 
-        let infoContent = `
-          <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
-            <div style="background:#004d40;color:#fff;padding:12px 16px">
-              <div style="font-size:16px;font-weight:600">📁 Projeto: ${p.idProjeto||"N/A"}</div>
-              <div style="font-size:13px">🔖 PG: ${p.codigoPoste||"-"}</div>
-            </div>
-            <div style="padding:10px 14px;display:grid;grid-template-columns:1fr;gap:6px">
-              <div>📅 <b>Data:</b> ${p.dataLancamento||"-"}</div>
-              <div>🏗️ <b>Estrutura Primária:</b> ${p.estruturaPrimaria||"-"}</div>
-              <div>📍 <b>Poste Primário:</b> ${p.postePrimario||"-"}</div>
-              <div>🔗 <b>Poste Secundário:</b> ${p.posteSecundario||"-"}</div>
-              <div>⚙️ <b>Estrutura Secundária:</b> ${p.estruturaSecundaria||"-"}</div>
-              <div>⚡ <b>Linha Viva:</b> ${p.linhaViva||"-"}</div>
-              ${p.servicosPodas?.trim() 
-                ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>` 
-                : ``
-              }
-              <div>📝 <b>Obs.:</b> ${p.observacoes||"-"}</div>
-              <div>📡 <b>Lat/Lon:</b> ${p.latitude||"-"}, ${p.longitude||"-"}</div>
-              <div>🟢 <b>Status:</b> <span style="color:${p.status==="concluído"?"#2e7d32":"#ff9800"}">${p.status||"Em andamento"}</span></div>
-              <div>👤 <b>Usuário:</b> ${p.usuario||"-"}</div>
-              <div id="muni-${p.id}" style="display:none; margin-top:4px">
-                🗺️ <b>Município:</b> <span id="muni-text-${p.id}">Carregando...</span>
-              </div>
-            </div>
-            ${
-              (p.foto1 || p.foto2 || p.foto3)
-                ? `<div style="padding:8px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                    ${p.foto1 ? `<a href="${p.foto1}" target="_blank"><img src="${p.foto1}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ``}
-                    ${p.foto2 ? `<a href="${p.foto2}" target="_blank"><img src="${p.foto2}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ``}
-                    ${p.foto3 ? `<a href="${p.foto3}" target="_blank"><img src="${p.foto3}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ``}
-                  </div>
-                  <div style="padding:10px 14px;text-align:center">
-                    <button onclick="abrirTabelaCompleta('${p.foto1}','${p.foto2}','${p.foto3}')" 
-                      style="background:#1976d2;color:#fff;border:none;padding:6px 10px;font-size:12px;font-weight:bold;border-radius:4px;cursor:pointer">
-                      🔍 Ver Fotos
-                    </button>
-                  </div>`
-                : ``
-            }
-          </div>
-        `;
-        const infoWindow = new google.maps.InfoWindow({ content: infoContent });
-        marker.addListener("click", () => infoWindow.open(map, marker));
-
-        geocoder.geocode({ location: { lat, lng } }, (results, statusGeo) => {
-          let muni = "Não disponível";
-          if (statusGeo === "OK" && results.length) {
-            for (const res of results) {
-              const comp = res.address_components.find(c => c.types.includes("administrative_area_level_2") || c.types.includes("locality"));
-              if (comp) { muni = comp.long_name; break; }
-            }
-          }
-          const elCont = document.getElementById(`muni-${p.id}`);
-          const elTxt  = document.getElementById(`muni-text-${p.id}`);
-          if (elCont && elTxt) {
-            elTxt.textContent = muni;
-            elCont.style.display = "block";
-          }
-        });
-
-        markers.push({ markerInstance: marker });
-        bounds.extend(marker.getPosition());
+    if (temPodas) {
+      const marcadorPodas = new google.maps.Marker({
+        position: { lat: lat + 0.0001, lng: lng + 0.0001 },
+        map,
+        title: `Podas: ${p.codigoPoste || ""}`,
+        icon: {
+          url: "abustro.png",
+          scaledSize: new google.maps.Size(18, 18)
+        },
+        zIndex: google.maps.Marker.MAX_ZINDEX + 1
       });
-
-      if (!bounds.isEmpty()) map.fitBounds(bounds);
+      markers.push({ markerInstance: marcadorPodas });
     }
 
-    // Abre pop‐up com as três fotos em tamanho maior
-    function abrirTabelaCompleta(f1, f2, f3) {
-      const html = `
-        <html>
-          <head>
-            <title>Fotos do Poste</title>
-            <style>
-              body {
-                font-family: sans-serif; background: #f0f0f0; padding:20px;
-                display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-              }
-              img {
-                border-radius:10px; border:1px solid #ccc;
-                max-width:90%; height:auto; object-fit:contain;
-              }
-            </style>
-          </head>
-          <body>
-            ${f1&&f1!=="undefined"?`<img src="${f1}" onerror="this.src='no-image.png'">`:""}
-            ${f2&&f2!=="undefined"?`<img src="${f2}" onerror="this.src='no-image.png'">`:""}
-            ${f3&&f3!=="undefined"?`<img src="${f3}" onerror="this.src='no-image.png'">`:""}
-          </body>
-        </html>`;
-      const win = window.open("", "_blank");
-      win.document.write(html);
-      win.document.close();
-    }
+    // InfoWindow com detalhes do poste
+    let infoContent = `
+      <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
+        <div style="background:#004d40;color:#fff;padding:12px 16px">
+          <div style="font-size:16px;font-weight:600">📁 Projeto: ${p.idProjeto || "N/A"}</div>
+          <div style="font-size:13px">🔖 PG: ${p.codigoPoste || "-"}</div>
+        </div>
+        <div style="padding:10px 14px;display:grid;grid-template-columns:1fr;gap:6px">
+          <div>📅 <b>Data:</b> ${p.dataLancamento || "-"}</div>
+          <div>🏗️ <b>Estrutura Primária:</b> ${p.estruturaPrimaria || "-"}</div>
+          <div>📍 <b>Poste Primário:</b> ${p.postePrimario || "-"}</div>
+          <div>🔗 <b>Poste Secundário:</b> ${p.posteSecundario || "-"}</div>
+          <div>⚙️ <b>Estrutura Secundária:</b> ${p.estruturaSecundaria || "-"}</div>
+          <div>⚡ <b>Linha Viva:</b> ${p.linhaViva || "-"}</div>
+          ${p.servicosPodas?.trim() ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>` : ""}
+          <div>📝 <b>Obs.:</b> ${p.observacoes || "-"}</div>
+          <div>📡 <b>Lat/Lon:</b> ${p.latitude || "-"}, ${p.longitude || "-"}</div>
+          <div>🟢 <b>Status:</b> <span style="color:${p.status === "concluído" ? "#2e7d32" : "#ff9800"}">${p.status || "Em andamento"}</span></div>
+          <div>👤 <b>Usuário:</b> ${p.usuario || "-"}</div>
+          <div id="muni-${p.id}" style="display:none; margin-top:4px">
+            🗺️ <b>Município:</b> <span id="muni-text-${p.id}">Carregando...</span>
+          </div>
+        </div>
+        ${
+          (p.foto1 || p.foto2 || p.foto3)
+            ? `<div style="padding:8px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                ${p.foto1 ? `<a href="${p.foto1}" target="_blank"><img src="${p.foto1}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+                ${p.foto2 ? `<a href="${p.foto2}" target="_blank"><img src="${p.foto2}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+                ${p.foto3 ? `<a href="${p.foto3}" target="_blank"><img src="${p.foto3}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+              </div>
+              <div style="padding:10px 14px;text-align:center">
+                <button onclick="abrirTabelaCompleta('${p.foto1}','${p.foto2}','${p.foto3}')" 
+                  style="background:#1976d2;color:#fff;border:none;padding:6px 10px;font-size:12px;font-weight:bold;border-radius:4px;cursor:pointer">
+                  🔍 Ver Fotos
+                </button>
+              </div>` : ""
+        }
+      </div>`;
+
+    const infoWindow = new google.maps.InfoWindow({ content: infoContent });
+    marcadorPoste.addListener("click", () => infoWindow.open(map, marcadorPoste));
+
+    // Buscar município
+    geocoder.geocode({ location: { lat, lng } }, (results, statusGeo) => {
+      let muni = "Não disponível";
+      if (statusGeo === "OK" && results.length) {
+        for (const res of results) {
+          const comp = res.address_components.find(c =>
+            c.types.includes("administrative_area_level_2") || c.types.includes("locality")
+          );
+          if (comp) {
+            muni = comp.long_name;
+            break;
+          }
+        }
+      }
+      const elCont = document.getElementById(`muni-${p.id}`);
+      const elTxt = document.getElementById(`muni-text-${p.id}`);
+      if (elCont && elTxt) {
+        elTxt.textContent = muni;
+        elCont.style.display = "block";
+      }
+    });
+
+    markers.push({ markerInstance: marcadorPoste });
+    bounds.extend(marcadorPoste.getPosition());
+  });
+
+  if (!bounds.isEmpty()) {
+    map.fitBounds(bounds);
+  }
+}
+
+
+   function abrirTabelaCompleta(f1, f2, f3) {
+  const html = `
+    <html>
+      <head>
+        <title>Fotos do Poste</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+          }
+          img {
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            max-width: 90%;
+            height: auto;
+            object-fit: contain;
+          }
+        </style>
+      </head>
+      <body>
+        ${f1 && f1 !== "undefined" ? `<img src="${f1}" onerror="this.src='no-image.png'">` : ""}
+        ${f2 && f2 !== "undefined" ? `<img src="${f2}" onerror="this.src='no-image.png'">` : ""}
+        ${f3 && f3 !== "undefined" ? `<img src="${f3}" onerror="this.src='no-image.png'">` : ""}
+      </body>
+    </html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+}
+
 
     // ---------- Exportar CSV ----------
     function exportarCSV(tudo=false) {
@@ -1048,7 +1077,7 @@
     }
     exibirPostes(lista);
     // Passa 'abustro.png' como override
-    mostrarMapa(lista, 'abustro.png');
+     mostrarMapa(lista, 'abustro.png');
     document.getElementById("btnMostrarPodas").textContent = "📌 Mostrar Todos";
   } else {
     exibirPostes(listaVisivel);
