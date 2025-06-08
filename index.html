@@ -715,6 +715,7 @@
       document.getElementById("contadorStatus").innerText = msg;
     }
 
+
     // ---------- Mostrar Mapa com Markers ----------
 function mostrarMapa(lista, iconOverride = null) {
   const bounds = new google.maps.LatLngBounds();
@@ -734,7 +735,6 @@ function mostrarMapa(lista, iconOverride = null) {
 
   const geocoder = new google.maps.Geocoder();
 
-  // Limpar marcadores antigos
   markers.forEach(m => {
     if (m.markerInstance) m.markerInstance.setMap(null);
     if (m.intervalId) clearInterval(m.intervalId);
@@ -746,18 +746,21 @@ function mostrarMapa(lista, iconOverride = null) {
     const lng = parseFloat(p.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
 
-    // Marcador principal: poste.png
+    const status = (p.status || "").toLowerCase();
+    const iconPoste = status === "em andamento" || status === ""
+      ? "andamento.png"
+      : "poste.png";
+
     const marcadorPoste = new google.maps.Marker({
       position: { lat, lng },
       map,
       title: `Poste: ${p.codigoPoste || ""}`,
       icon: {
-        url: "poste.png",
+        url: iconPoste,
         scaledSize: new google.maps.Size(32, 32)
       }
     });
 
-    // Marcador de podas: abustro.png (deslocado ~10m para nordeste)
     const podas = (p.servicosPodas || "").trim().toLowerCase();
     const temPodas = podas && podas !== "não recebido";
 
@@ -775,7 +778,6 @@ function mostrarMapa(lista, iconOverride = null) {
       markers.push({ markerInstance: marcadorPodas });
     }
 
-    // InfoWindow com detalhes do poste
     let infoContent = `
       <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
         <div style="background:#004d40;color:#fff;padding:12px 16px">
@@ -792,7 +794,7 @@ function mostrarMapa(lista, iconOverride = null) {
           ${p.servicosPodas?.trim() ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>` : ""}
           <div>📝 <b>Obs.:</b> ${p.observacoes || "-"}</div>
           <div>📡 <b>Lat/Lon:</b> ${p.latitude || "-"}, ${p.longitude || "-"}</div>
-          <div>🟢 <b>Status:</b> <span style="color:${p.status === "concluído" ? "#2e7d32" : "#ff9800"}">${p.status || "Em andamento"}</span></div>
+          <div>🟢 <b>Status:</b> <span style="color:${status === "concluído" ? "#2e7d32" : "#ff9800"}">${p.status || "Em andamento"}</span></div>
           <div>👤 <b>Usuário:</b> ${p.usuario || "-"}</div>
           <div id="muni-${p.id}" style="display:none; margin-top:4px">
             🗺️ <b>Município:</b> <span id="muni-text-${p.id}">Carregando...</span>
@@ -817,7 +819,6 @@ function mostrarMapa(lista, iconOverride = null) {
     const infoWindow = new google.maps.InfoWindow({ content: infoContent });
     marcadorPoste.addListener("click", () => infoWindow.open(map, marcadorPoste));
 
-    // Buscar município
     geocoder.geocode({ location: { lat, lng } }, (results, statusGeo) => {
       let muni = "Não disponível";
       if (statusGeo === "OK" && results.length) {
@@ -847,6 +848,7 @@ function mostrarMapa(lista, iconOverride = null) {
     map.fitBounds(bounds);
   }
 }
+
 
 
    function abrirTabelaCompleta(f1, f2, f3) {
