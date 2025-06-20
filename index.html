@@ -660,52 +660,80 @@
       botao.textContent = "🗑️";
     }
 
-    // ---------- Sumários de Podas e Linha Viva ----------
-    function somarValor(labelField, statusField, lista) {
-      let total = 0;
-      lista.forEach(p => {
-        const texto = (p[labelField] || "").trim().toLowerCase();
-        const stat  = (p[statusField] || "").trim().toLowerCase();
-        if (texto && texto !== "não recebido" && stat !== "concluído") {
-          const matches = texto.match(/r\$ ?[\d.,]+/gi);
-          if (matches) matches.forEach(val => {
-            const num = parseFloat(val.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-            total += num;
-          });
-        }
-      });
-      return total;
-    }
+     // ---------- Sumários de Podas e Linha Viva ----------
+function somarValor(labelField, statusField, lista) {
+  let total = 0;
+  lista.forEach(p => {
+    const textoOriginal = (p[labelField] || "").trim().toLowerCase();
+    const stat = (p[statusField] || "").trim().toLowerCase();
 
-   function atualizarContadorStatus() {
+    const textoLimpo = textoOriginal.replace(/\s+/g, " ").replace(/\n/g, " ").trim();
+
+    // Ignora valores inválidos
+    if (
+      !textoLimpo || 
+      textoLimpo === "não recebido" || 
+      textoLimpo === "selecione os serviços" || 
+      stat === "concluído"
+    ) return;
+
+    const matches = textoLimpo.match(/r\$ ?[\d.,]+/gi);
+    if (matches) {
+      matches.forEach(val => {
+        const num = parseFloat(val.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+        total += num;
+      });
+    }
+  });
+  return total;
+}
+
+
+
+  function atualizarContadorStatus() {
   const lista = todosOsPostes;
 
-  const totalProj    = new Set(lista.map(p => (p.idProjeto||"").trim()).filter(x => x!=="")).size;
-  const totalPostes  = lista.length;
-  const concluidos   = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
-  const andamento    = lista.filter(p => normalizarTexto(p.status) === "em andamento").length;
-  const comPodas     = lista.filter(p => (p.servicosPodas||"").trim().toLowerCase() && normalizarTexto(p.status) !== "concluído").length;
-  const podasPend    = lista.filter(p => (p.servicosPodas||"").trim().toLowerCase() && normalizarTexto(p.status) !== "concluído").length;
-  const comLV        = lista.filter(p => (p.linhaViva||"").trim().toLowerCase() && normalizarTexto(p.status) !== "concluído").length;
-  const lvPend       = lista.filter(p => (p.linhaViva||"").trim().toLowerCase() && normalizarTexto(p.status) !== "concluído").length;
+  const totalProj   = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
+  const totalPostes = lista.length;
+  const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
+  const andamento   = lista.filter(p => normalizarTexto(p.status) === "em andamento").length;
 
-  // soma valores de Linha Viva
-  const totalLV      = somarValor("linhaViva", "status", lista);
-  const totalLVf     = totalLV > 0 
-                       ? totalLV.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }) 
-                       : null;
+  // 🧠 Apenas contam Podas ou Linha Viva se tiverem valor R$
+  const regexValor = /r\$ ?[\d.,]+/i;
 
-  // soma valores de Podas
-  const totalPodas   = somarValor("servicosPodas", "status", lista);
-  const totalPodasf  = totalPodas > 0
-                       ? totalPodas.toLocaleString("pt-BR", { style:"currency", currency:"BRL" })
-                       : null;
+  const comPodas = lista.filter(p => {
+    const txt = (p.servicosPodas || "").toLowerCase().replace(/\n/g, " ");
+    return regexValor.test(txt);
+  }).length;
 
-  const agora     = new Date();
-  const horaAtual = agora.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+  const podasPend = lista.filter(p => {
+    const txt = (p.servicosPodas || "").toLowerCase().replace(/\n/g, " ");
+    const status = normalizarTexto(p.status);
+    return regexValor.test(txt) && status !== "concluído";
+  }).length;
+
+  const comLV = lista.filter(p => {
+    const txt = (p.linhaViva || "").toLowerCase().replace(/\n/g, " ");
+    return regexValor.test(txt);
+  }).length;
+
+  const lvPend = lista.filter(p => {
+    const txt = (p.linhaViva || "").toLowerCase().replace(/\n/g, " ");
+    const status = normalizarTexto(p.status);
+    return regexValor.test(txt) && status !== "concluído";
+  }).length;
+
+  const totalPodas = somarValor("servicosPodas", "status", lista);
+  const totalLV = somarValor("linhaViva", "status", lista);
+
+  const totalPodasf = totalPodas > 0 ? totalPodas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
+  const totalLVf    = totalLV > 0 ? totalLV.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
+
+  const agora = new Date();
+  const horaAtual = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dataAtual = agora.toLocaleDateString("pt-BR");
 
-  let msg = 
+  let msg =
     `📚 ${totalProj} projetos | 🔢 ${totalPostes} postes | ✅ ${concluidos} concluídos | ` +
     `🛠 ${andamento} em andamento | 🌿 ${comPodas} com poda | 🕳️ ${podasPend} podas pendentes | ` +
     `⚡ ${comLV} com linha viva | ⏳ ${lvPend} linha viva pendente`;
@@ -717,7 +745,6 @@
 
   document.getElementById("contadorStatus").innerText = msg;
 }
-
 
 
     // ---------- Mostrar Mapa com Markers ----------
