@@ -792,22 +792,23 @@ function mostrarMapa(lista, iconOverride = null) {
       }
     });
 
-    const podas = (p.servicosPodas || "").trim().toLowerCase();
-    const temPodas = podas && podas !== "não recebido";
+const podas = (p.servicosPodas || "").trim().toLowerCase();
+const temPodas = podas && podas !== "não recebido";
 
-    if (temPodas) {
-      const marcadorPodas = new google.maps.Marker({
-        position: { lat: lat + 0.0001, lng: lng + 0.0001 },
-        map,
-        title: `Podas: ${p.codigoPoste || ""}`,
-        icon: {
-          url: "abustro.png",
-          scaledSize: new google.maps.Size(18, 18)
-        },
-        zIndex: google.maps.Marker.MAX_ZINDEX + 1
-      });
-      markers.push({ markerInstance: marcadorPodas });
-    }
+if (temPodas) {
+  const marcadorPodas = new google.maps.Marker({
+    position: { lat: lat + 0.000009, lng: lng + 0.000009 },
+    map,
+    title: `Podas: ${p.codigoPoste || ""}`,
+    icon: {
+      url: "abustro.png",
+      scaledSize: new google.maps.Size(18, 18)
+    },
+    zIndex: google.maps.Marker.MAX_ZINDEX + 1
+  });
+  markers.push({ markerInstance: marcadorPodas });
+}
+
 
     let infoContent = `
       <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
