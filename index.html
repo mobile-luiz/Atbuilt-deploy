@@ -695,8 +695,13 @@ function somarValor(labelField, statusField, lista) {
 
   const totalProj   = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
   const totalPostes = lista.length;
-  const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
-  const andamento   = lista.filter(p => normalizarTexto(p.status) === "em andamento").length;
+const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
+const andamento   = lista.filter(p => {
+  const s = normalizarTexto(p.status);
+  // conta como andamento se estiver em branco ou marcado como "em andamento"
+  return s === "" || s === "em andamento";
+}).length;
+
 
   // 🧠 Apenas contam Podas ou Linha Viva se tiverem valor R$
   const regexValor = /r\$ ?[\d.,]+/i;
