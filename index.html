@@ -1171,28 +1171,30 @@ if (temPodas) {
       carregarPostes();
     }
 
-    function toggleLinhaViva() {
-      mostrandoSomenteLinhaViva = !mostrandoSomenteLinhaViva;
-      if (mostrandoSomenteLinhaViva) {
-        const lista = todosOsPostes.filter(p => {
-          const lv = (p.linhaViva||"").trim().toLowerCase();
-          const st = (p.status||"").trim().toLowerCase();
-          return lv && lv !== "não recebido" && st !== "concluído";
-        });
-        if (!lista.length) {
-          alert("Nenhum poste com linha viva em andamento.");
-          mostrandoSomenteLinhaViva = false;
-          return;
-        }
-        exibirPostes(lista);
-        mostrarMapa(lista);
-        document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Todos";
-      } else {
-        exibirPostes(listaVisivel);
-        mostrarMapa(listaVisivel);
-        document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Linha Viva";
-      }
+     function toggleLinhaViva() {
+  mostrandoSomenteLinhaViva = !mostrandoSomenteLinhaViva;
+  if (mostrandoSomenteLinhaViva) {
+    const lista = todosOsPostes.filter(p => {
+      const lv = (p.linhaViva || "").trim().toLowerCase();
+      const st = (p.status   || "").trim().toLowerCase();
+      // Ignora: vazio, "selecione os serviços" ou "não recebido"
+      const invalido = !lv || lv === "selecione os serviços" || lv === "não recebido";
+      return !invalido && st !== "concluído";
+    });
+    if (!lista.length) {
+      alert("Nenhum poste com linha viva em andamento.");
+      mostrandoSomenteLinhaViva = false;
+      return;
     }
+    exibirPostes(lista);
+    mostrarMapa(lista);
+    document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Todos";
+  } else {
+    exibirPostes(listaVisivel);
+    mostrarMapa(listaVisivel);
+    document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Linha Viva";
+  }
+}
   </script>
 </body>
 </html>
