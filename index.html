@@ -488,112 +488,69 @@
       }
     }
 
-    // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
-  // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido + spinner GIF) ----------
-function exibirPostes(lista) {
-  const tbody = document.querySelector("#tabelaPostes tbody");
-  tbody.innerHTML = "";
+ // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
+    function exibirPostes(lista) {
+      const tbody = document.querySelector("#tabelaPostes tbody");
+      tbody.innerHTML = "";
 
-  lista.forEach(p => {
-    const status = normalizarTexto(p.status || "em andamento");
-    const tempo = p.tempoDecorrido
-      ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
-      : "-";
+      lista.forEach(p => {
+        const status = normalizarTexto(p.status || "em andamento");
+        const tempo = p.tempoDecorrido
+          ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+          : "-";
 
-    // gera URL de thumb
-    const thumb1 = p.foto1 ? p.foto1.replace(/(\.\w+)$/, "_thumb$1") : "";
-    const thumb2 = p.foto2 ? p.foto2.replace(/(\.\w+)$/, "_thumb$1") : "";
-    const thumb3 = p.foto3 ? p.foto3.replace(/(\.\w+)$/, "_thumb$1") : "";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span>${p.dataLancamento || ""}</span></td>
+          <td><input type="text" value="${p.idProjeto||""}" disabled></td>
+          <td><input type="text" value="${p.codigoPoste||""}" disabled></td>
+          <td><input type="text" value="${p.postePrimario||""}" disabled></td>
+          <td><input type="text" value="${p.estruturaPrimaria||""}" disabled></td>
+          <td><input type="text" value="${p.posteSecundario||""}" disabled></td>
+          <td><input type="text" value="${p.estruturaSecundaria||""}" disabled></td>
+          <td><textarea disabled>${p.linhaViva||""}</textarea></td>
+          <td><textarea disabled>${p.servicosPodas||""}</textarea></td>
+          <td><textarea disabled>${p.observacoes||""}</textarea></td>
+          <td>${
+            p.foto1
+              ? `<a href="${p.foto1}" target="_blank">
+                   <img class="miniatura" src="${p.foto1}" alt="Foto1">
+                 </a>`
+              : ``
+          }</td>
+          <td>${
+            p.foto2
+              ? `<a href="${p.foto2}" target="_blank">
+                   <img class="miniatura" src="${p.foto2}" alt="Foto2">
+                 </a>`
+              : ``
+          }</td>
+          <td>${
+            p.foto3
+              ? `<a href="${p.foto3}" target="_blank">
+                   <img class="miniatura" src="${p.foto3}" alt="Foto3">
+                 </a>`
+              : ``
+          }</td>
+          <td><input type="text" value="${p.latitude||""}" readonly></td>
+          <td><input type="text" value="${p.longitude||""}" readonly></td>
+          <td><input type="text" value="${p.usuario||""}" readonly></td>
+          <td>
+            <select disabled>
+              <option value="em andamento" ${status==="em andamento"? "selected":""}>Em andamento</option>
+              <option value="concluído"    ${status==="concluído"   ? "selected":""}>Concluído</option>
+            </select>
+          </td>
+          <!-- Coluna de Tempo em andamento -->
+          <td><span>${tempo}</span></td>
+          <td><button onclick="editar(this)">✏️</button></td>
+          <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
+        `;
+        tr.dataset.id = p.id;
+        tbody.appendChild(tr);
+      });
+    }
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><span>${p.dataLancamento || ""}</span></td>
-      <td><input type="text" value="${p.idProjeto||""}" disabled></td>
-      <td><input type="text" value="${p.codigoPoste||""}" disabled></td>
-      <td><input type="text" value="${p.postePrimario||""}" disabled></td>
-      <td><input type="text" value="${p.estruturaPrimaria||""}" disabled></td>
-      <td><input type="text" value="${p.posteSecundario||""}" disabled></td>
-      <td><input type="text" value="${p.estruturaSecundaria||""}" disabled></td>
-      <td><textarea disabled>${p.linhaViva||""}</textarea></td>
-      <td><textarea disabled>${p.servicosPodas||""}</textarea></td>
-      <td><textarea disabled>${p.observacoes||""}</textarea></td>
-      <td>${
-        thumb1
-          ? `<a href="${p.foto1}" target="_blank">
-               <img
-                 class="miniatura lazy"
-                 src="https://seusite.com/assets/spinner.gif"
-                 data-src="${thumb1}"
-                 width="50" height="50"
-                 alt="Carregando..."
-               >
-             </a>`
-          : ``
-      }</td>
-      <td>${
-        thumb2
-          ? `<a href="${p.foto2}" target="_blank">
-               <img
-                 class="miniatura lazy"
-                 src="https://seusite.com/assets/spinner.gif"
-                 data-src="${thumb2}"
-                 width="50" height="50"
-                 alt="Carregando..."
-               >
-             </a>`
-          : ``
-      }</td>
-      <td>${
-        thumb3
-          ? `<a href="${p.foto3}" target="_blank">
-               <img
-                 class="miniatura lazy"
-                 src="https://seusite.com/assets/spinner.gif"
-                 data-src="${thumb3}"
-                 width="50" height="50"
-                 alt="Carregando..."
-               >
-             </a>`
-          : ``
-      }</td>
-      <td><input type="text" value="${p.latitude||""}" readonly></td>
-      <td><input type="text" value="${p.longitude||""}" readonly></td>
-      <td><input type="text" value="${p.usuario||""}" readonly></td>
-      <td>
-        <select disabled>
-          <option value="em andamento" ${status==="em andamento"? "selected":""}>
-            Em andamento
-          </option>
-          <option value="concluído" ${status==="concluído"? "selected":""}>
-            Concluído
-          </option>
-        </select>
-      </td>
-      <td><span>${tempo}</span></td>
-      <td><button onclick="editar(this)">✏️</button></td>
-      <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
-    `;
-    tr.dataset.id = p.id;
-    tbody.appendChild(tr);
-  });
-
-  // inicializa lazy-load das miniaturas
-  const imgs = document.querySelectorAll("img.lazy");
-  const observer = new IntersectionObserver((entries, obs) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const img = entry.target;
-      img.src = img.dataset.src;
-      img.classList.remove("lazy");
-      obs.unobserve(img);
-    });
-  }, {
-    root: document.querySelector(".scroll-table"),
-    rootMargin: "200px 0px",
-    threshold: 0.1
-  });
-  imgs.forEach(img => observer.observe(img));
-}
 
     // ---------- Editar / Salvar / Excluir ----------
     function editar(botao) {
