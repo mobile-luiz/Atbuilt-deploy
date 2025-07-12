@@ -433,8 +433,12 @@
                           normalizarTexto(p.codigoPoste).includes(filtroPoste);
         const okUsuario = !filtroUsuario ||
                           normalizarTexto(p.usuario).includes(filtroUsuario);
-        const okStatus  = !filtroStatus ||
-                          normalizarTexto(p.status) === filtroStatus;
+        const statusNorm = normalizarTexto(p.status);
+       const okStatus = !filtroStatus ||
+      (filtroStatus === "em andamento"
+      ? (statusNorm === "" || statusNorm === "em andamento")
+      : statusNorm === filtroStatus);
+
 
         let okData = true;
         if (dataInicial) {
