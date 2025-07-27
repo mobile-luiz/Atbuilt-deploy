@@ -1,0 +1,1218 @@
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atbuilt – Sistema de Gestão de Postes</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="logo-atbuilt.png" type="image/png" />
+</head>
+
+  <!-- Firebase (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- html2canvas + jsPDF bundle -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+  <!-- CSS Externo (ou inline) -->
+  <link rel="stylesheet" href="estilos.css" />
+  <style>
+    /* ================== Estilos Gerais ================== */
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    h2 { margin-bottom: 16px; }
+
+    /* ===== Tela de Login ===== */
+    .login-container {
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh;
+    }
+    .login-box {
+      border: 1px solid #ccc; padding: 20px; border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .login-box input {
+      width: 250px; margin-bottom: 10px; padding: 8px; font-size: 14px;
+    }
+    .login-box button {
+      padding: 8px 12px; font-size: 14px; background: #1976d2;
+      color: #fff; border: none; border-radius: 4px; cursor: pointer;
+    }
+    .login-box button:hover { background: #155a9e; }
+    .login-erro { margin-top: 8px; color: red; font-size: 13px; }
+
+    /* ===== Sistema após login ===== */
+    .sistema-container { display: none; padding: 20px; }
+    .header {
+      background: #f5f5f5; border-radius: 8px; padding: 12px; margin-bottom: 16px;
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .header div { display: flex; flex-direction: column; }
+    .header label { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+    .header input, .header select {
+      padding: 6px 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;
+      width: 180px;
+    }
+
+    .acoes {
+      margin-bottom: 12px;
+    }
+    .acoes button {
+      margin-right: 8px; padding: 8px 12px; background: #1e88e5;
+      color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;
+    }
+    .acoes button:hover { background: #1565c0; }
+
+    #contadorStatus { margin-bottom: 12px; font-weight: bold; }
+    #paginacao button { margin: 0 4px; padding: 4px 8px; font-size: 14px; }
+
+    .scroll-table {
+      max-height: 400px; overflow-y: auto; border: 1px solid #ddd;
+      margin-bottom: 16px;
+    }
+    #tabelaPostes {
+      width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;
+    }
+    #tabelaPostes th, #tabelaPostes td {
+      padding: 8px; border: 1px solid #ccc; font-size: 14px; white-space: nowrap;
+    }
+    #tabelaPostes th {
+      background: #00695c; color: #fff; position: sticky; top: 0; z-index: 1;
+    }
+    .miniatura {
+      width: 50px; height: 50px; object-fit: cover; border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button.delete-btn {
+      background: transparent; border: none; font-size: 16px; color: #c62828; cursor: pointer;
+    }
+    button.delete-btn:hover { color: #b71c1c; }
+
+    /* ========== Estilos de impressão (PDF) ========== */
+    @media print {
+      body { margin: 0; padding: 0; }
+      #pdfContainer { width: 210mm; margin: 0 auto; }
+      .acoes, .header input, .header select, #map, .mapa-container, #paginacao {
+        display: none !important;
+      }
+      .scroll-table { max-height: none; }
+      #tabelaPostes { width: 100%; table-layout: fixed; }
+      #tabelaPostes th, #tabelaPostes td { word-wrap: break-word; }
+    }
+
+    /* Pequenho ajuste para coluna "Tempo em andamento" */
+    #tabelaPostes td span {
+      display: inline-block;
+      min-width: 50px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ===== Tela de Login ===== -->
+  <div id="loginContainer" class="login-container">
+    <div class="login-box">
+      <h2>Login</h2>
+      <input type="text" id="loginEmail" placeholder="E-mail ou Usuário" />
+      <input type="password" id="loginSenha" placeholder="Senha" />
+      <button onclick="fazerLogin()">Entrar</button>
+      <div id="loginErro" class="login-erro"></div>
+      <div style="margin-top:30px; text-align:center;">
+        <img src="logo-atbuilt.png" alt="Logo" style="height:50px; margin-bottom:8px;" />
+        <h3 style="font-size:16px; color:#1a202c;">Atbuilt – Sistema de Gestão</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Sistema (após login) ===== -->
+  <div id="sistemaContainer" class="sistema-container">
+    <!-- abre container geral -->
+    <div id="mainContent" class="container">
+      <!-- Início do conteúdo capturado pelo PDF -->
+      <div id="pdfContainer">
+  <div class="top-bar">
+  <h2>Atbuilt – Sistema de Gestão de Postes</h2>
+  <img src="logo-atbuilt.png" alt="Logo Atbuilt" class="site-logo" />
+</div>
+
+        <!-- Filtros -->
+        <div class="header">
+          <!-- filtro de usuário -->
+          <div>
+            <label for="usuario">E-mail do usuário</label>
+            <input type="text" id="usuario" oninput="filtrarPostes()" placeholder="Filtrar por usuário" />
+          </div>
+
+          <!-- filtro de PROJETO: input texto -->
+          <div>
+            <label for="filtroProjeto">ID do Projeto</label>
+            <input
+              type="text"
+              id="filtroProjeto"
+              oninput="filtrarPostes()"
+              placeholder="Filtrar por ID do Projeto"
+            />
+          </div>
+
+          <!-- filtro de POSTE: input texto -->
+          <div>
+            <label for="filtroPoste">Código do Poste</label>
+            <input
+              type="text"
+              id="filtroPoste"
+              oninput="filtrarPostes()"
+              placeholder="Filtrar por código"
+            />
+          </div>
+
+          <!-- filtro de STATUS -->
+          <div>
+            <label for="filtroStatus">Status</label>
+            <select id="filtroStatus" onchange="filtrarPostes()">
+              <option value="">Todos</option>
+              <option value="em andamento">Em andamento</option>
+              <option value="concluído">Concluído</option>
+            </select>
+          </div>
+
+          <!-- filtro de datas -->
+          <div>
+            <label for="dataInicial">De:</label>
+            <input type="date" id="dataInicial" onchange="filtrarPostes()" />
+          </div>
+          <div>
+            <label for="dataFinal">Até:</label>
+            <input type="date" id="dataFinal" onchange="filtrarPostes()" />
+          </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="acoes">
+          <button onclick="exportarCSV(false)">📥 Baixar Página</button>
+          <button onclick="exportarCSV(true)">📥 Baixar Tudo</button>
+          <button onclick="baixarPDFModelo()">📄 Baixar PDF</button>
+          <button id="btnPowerBI" onclick="togglePowerBI()">📊 Power BI</button>
+          <button id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
+          <button id="btnMostrarLinhaViva" onclick="toggleLinhaViva()">⚡ Mostrar Linha Viva</button>
+        
+          
+        </div>
+
+
+        <!-- Contador de Status -->
+        <div id="contadorStatus"></div>
+
+        <!-- Paginação -->
+        <div id="paginacao"></div>
+
+        <!-- Tabela de Postes -->
+        <div class="scroll-table">
+          <table id="tabelaPostes">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>ID Projeto</th>
+                <th>PG</th>
+                <th>Poste Primário</th>
+                <th>Estrut. Primária</th>
+                <th>Poste Secundário</th>
+                <th>Estrut. Secundária</th>
+                <th>Linha Viva</th>
+                <th>Serviços Podas</th>
+                <th>Observações</th>
+                <th>Foto1</th>
+                <th>Foto2</th>
+                <th>Foto3</th>
+                <th>Lat</th>
+                <th>Lng</th>
+                <th>Usuário</th>
+                <th>Status</th>
+                <th>Tempo em andamento</th> <!-- Nova coluna -->
+                <th>Ações</th>
+                <th>Excluir</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Mapa dos Postes -->
+        <h3 class="map-title">📍 Mapa dos Postes</h3>
+        <div style="display: flex; gap: 16px; margin-bottom: 8px; align-items: center;">
+          <div style="display: flex; align-items: center;">
+            <span style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background-color: #ffc107;
+              border-radius: 50%;
+              margin-right: 6px;
+              box-shadow: 0 0 1px rgba(0,0,0,0.2);
+            "></span>
+            Em andamento
+          </div>
+          <div style="display: flex; align-items: center;">
+            <span style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background-color: #dc3545;
+              border-radius: 50%;
+              margin-right: 6px;
+              box-shadow: 0 0 1px rgba(0,0,0,0.2);
+            "></span>
+            Concluído
+          </div>
+        </div>
+        <div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
+      </div>
+      <!-- fim #pdfContainer -->
+    </div>
+    <!-- fim #mainContent -->
+
+     <div id="powerbiContainer" style="display: none; width: 100%; height: 80vh; position: relative;">
+    <button
+      onclick="togglePowerBI()"
+      style="position: absolute; top: 16px; right: 16px; z-index: 10;
+             background: #1e88e5; color: #fff; border: none; padding: 8px 12px;
+             border-radius: 4px; cursor: pointer;"
+    >
+      ← Voltar ao Painel
+    </button>
+
+   <iframe
+  title="Atbuilt atual"
+  width="100%"
+  height="100%"
+  src="https://app.powerbi.com/view?r=eyJrIjoiOGU1YzAwZTEtZTViZS00YWY5LThlOWYtMDVhODU2NmMzODMwIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
+  frameborder="0"
+  allowFullScreen="true"
+  style="border: none;"
+></iframe>
+    </div>
+    <!-- fim #powerbiContainer -->
+  </div>
+  <!-- fim #sistemaContainer -->
+
+  <!-- initMap para Google Maps -->
+  <script>
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: -8.0, lng: -35.0 },
+        zoom: 6,
+        gestureHandling: "greedy",
+        zoomControl: true,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+      });
+    }
+  </script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=initMap"
+    async defer>
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
+
+  <!-- Lógica Firebase + Tabela + Filtros + Mapa + Exportação + PDF + Tempo Decorrido -->
+  <script>
+    // ---------- Inicialização Firebase ----------
+   const firebaseConfig = {
+      apiKey: "AIzaSyC_z3mtM3e5stpmRU_XLT2JfBw9jjF9rXY",
+      databaseURL: "https://atbuilt-7dd80-default-rtdb.firebaseio.com",
+   
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let todosOsPostes = [];
+    let listaVisivel = [];
+    let paginaAtual = 1;
+    const itensPorPagina = 100;
+    let map;
+    let markers = [];
+    let mostrandoSomentePodas = false;
+    let mostrandoSomenteLinhaViva = false;
+
+    // ---------- Calcular Tempo Decorrido (dias e horas) ----------
+    function calcularTempoDecorrido(dataLancStr) {
+      if (!dataLancStr) return null;
+      // Se dataLancStr estiver no formato "DD/MM/YYYY HH:mm:ss":
+      const partes = dataLancStr.split(/[\s/:]+/).map(Number);
+      const dataLanc = new Date(partes[2], partes[1] - 1, partes[0], partes[3], partes[4], partes[5] || 0);
+      const agora = new Date();
+      const diffMs = agora - dataLanc;
+      if (isNaN(diffMs) || diffMs < 0) return null;
+      const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      return { dias, horas };
+    }
+
+    // ---------- Função de Login ----------
+    function fazerLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const senha = document.getElementById("loginSenha").value.trim();
+      if (!email || !senha) {
+        document.getElementById("loginErro").innerText = "Por favor, preencha e-mail e senha.";
+        return;
+      }
+      auth.signInWithEmailAndPassword(email, senha)
+        .then(() => {
+          document.getElementById("loginContainer").style.display = "none";
+          document.getElementById("sistemaContainer").style.display = "block";
+          carregarPostes();
+        })
+        .catch(err => {
+          document.getElementById("loginErro").innerText = `Erro: ${err.message}`;
+        });
+    }
+
+    // ---------- Formatação de Data (DD/MM/YYYY HH:mm:ss) ----------
+    function formatarDataBR(dataStr) {
+      if (!dataStr) return "";
+      if (/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(dataStr)) {
+        return dataStr;
+      }
+      const dt = new Date(dataStr);
+      if (isNaN(dt)) return dataStr;
+      const pad = n => String(n).padStart(2, "0");
+      return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()} ` +
+             `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+    }
+
+    // ---------- Carregar Postes do Firebase ----------
+    function carregarPostes() {
+      db.ref("postes").off("value");
+      db.ref("postes").on("value", snapshot => {
+        const obj = snapshot.val() || {};
+        const lista = Object.entries(obj)
+          .filter(([, v]) => v !== null)
+          .map(([id, data]) => {
+            // converter dataLancamento de string para Date (campo _dataConvertida)
+            if (data.dataLancamento && typeof data.dataLancamento === "string") {
+              const partes = data.dataLancamento.split(/[\s/:]+/).map(Number);
+              if (partes.length >= 5) {
+                data._dataConvertida = new Date(partes[2], partes[1]-1, partes[0], partes[3], partes[4], partes[5]||0);
+              } else {
+                data._dataConvertida = null;
+              }
+            }
+            return { id, ...data };
+          });
+        // ordena do mais recente para o mais antigo
+        lista.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
+        todosOsPostes = lista;
+        paginaAtual = 1;
+        filtrarPostes();
+      });
+    }
+
+    // ---------- Normalização de Texto ----------
+    function normalizarTexto(txt) {
+      return (txt || "").toString().trim().toLowerCase();
+    }
+
+    // ---------- Filtrar + Calcular Tempo + Paginar + Exibir ----------
+    function filtrarPostes() {
+      const filtroProjeto = normalizarTexto(document.getElementById("filtroProjeto")?.value);
+      const filtroPoste   = normalizarTexto(document.getElementById("filtroPoste")?.value);
+      const filtroUsuario = normalizarTexto(document.getElementById("usuario")?.value);
+      const filtroStatus  = normalizarTexto(document.getElementById("filtroStatus")?.value);
+      const dataInicial   = document.getElementById("dataInicial").value;
+      const dataFinal     = document.getElementById("dataFinal").value;
+
+      // filtrar
+      let listaFiltrada = todosOsPostes.filter(p => {
+        const data = p._dataConvertida;
+        // projeto: agora usamos includes()
+        const okProjeto = !filtroProjeto ||
+                          normalizarTexto(p.idProjeto).includes(filtroProjeto);
+        // poste: includes()
+        const okPoste   = !filtroPoste ||
+                          normalizarTexto(p.codigoPoste).includes(filtroPoste);
+        const okUsuario = !filtroUsuario ||
+                          normalizarTexto(p.usuario).includes(filtroUsuario);
+       const statusNorm = normalizarTexto(p.status);
+       const okStatus = !filtroStatus ||
+      (filtroStatus === "em andamento"
+      ? (statusNorm === "" || statusNorm === "em andamento")
+      : statusNorm === filtroStatus);
+
+        let okData = true;
+        if (dataInicial) {
+          const dtIni = new Date(`${dataInicial}T00:00:00`);
+          okData = data instanceof Date && data >= dtIni;
+        }
+        if (okData && dataFinal) {
+          const dtFim = new Date(`${dataFinal}T23:59:59`);
+          okData = data instanceof Date && data <= dtFim;
+        }
+        return okProjeto && okPoste && okUsuario && okStatus && okData;
+      });
+
+      // recalculação de tempo decorrido
+      listaFiltrada.forEach(p => {
+        if ((p.status || "").toLowerCase() === "em andamento") {
+          p.tempoDecorrido = calcularTempoDecorrido(p.dataLancamento || "");
+        } else {
+          p.tempoDecorrido = null;
+        }
+      });
+
+      // ordenar do mais recente para mais antigo
+      listaFiltrada.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
+
+      // paginar
+      const totalPaginas = Math.ceil(listaFiltrada.length / itensPorPagina);
+      const inicio = (paginaAtual - 1) * itensPorPagina;
+      const fim    = inicio + itensPorPagina;
+      listaVisivel = listaFiltrada.slice(inicio, fim);
+
+      exibirPostes(listaVisivel);
+      mostrarMapa(listaVisivel);
+      atualizarPaginacao(totalPaginas);
+      atualizarContadorStatus();
+    }
+
+    // ---------- Atualizar Paginação ----------
+    function atualizarPaginacao(totalPaginas) {
+      const pagDiv = document.getElementById("paginacao");
+      pagDiv.innerHTML = "";
+      for (let i = 1; i <= totalPaginas; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.disabled = i === paginaAtual;
+        btn.onclick = () => {
+          paginaAtual = i;
+          filtrarPostes();
+        };
+        pagDiv.appendChild(btn);
+      }
+    }
+ // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
+    function exibirPostes(lista) {
+      const tbody = document.querySelector("#tabelaPostes tbody");
+      tbody.innerHTML = "";
+
+      lista.forEach(p => {
+        const status = normalizarTexto(p.status || "em andamento");
+        const tempo = p.tempoDecorrido
+          ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+          : "-";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span>${p.dataLancamento || ""}</span></td>
+          <td><input type="text" value="${p.idProjeto||""}" disabled></td>
+          <td><input type="text" value="${p.codigoPoste||""}" disabled></td>
+          <td><input type="text" value="${p.postePrimario||""}" disabled></td>
+          <td><input type="text" value="${p.estruturaPrimaria||""}" disabled></td>
+          <td><input type="text" value="${p.posteSecundario||""}" disabled></td>
+          <td><input type="text" value="${p.estruturaSecundaria||""}" disabled></td>
+          <td><textarea disabled>${p.linhaViva||""}</textarea></td>
+          <td><textarea disabled>${p.servicosPodas||""}</textarea></td>
+          <td><textarea disabled>${p.observacoes||""}</textarea></td>
+          <td>${
+            p.foto1
+              ? `<a href="${p.foto1}" target="_blank">
+                   <img class="miniatura" src="${p.foto1}" alt="Foto1">
+                 </a>`
+              : ``
+          }</td>
+          <td>${
+            p.foto2
+              ? `<a href="${p.foto2}" target="_blank">
+                   <img class="miniatura" src="${p.foto2}" alt="Foto2">
+                 </a>`
+              : ``
+          }</td>
+          <td>${
+            p.foto3
+              ? `<a href="${p.foto3}" target="_blank">
+                   <img class="miniatura" src="${p.foto3}" alt="Foto3">
+                 </a>`
+              : ``
+          }</td>
+          <td><input type="text" value="${p.latitude||""}" readonly></td>
+          <td><input type="text" value="${p.longitude||""}" readonly></td>
+          <td><input type="text" value="${p.usuario||""}" readonly></td>
+          <td>
+            <select disabled>
+              <option value="em andamento" ${status==="em andamento"? "selected":""}>Em andamento</option>
+              <option value="concluído"    ${status==="concluído"   ? "selected":""}>Concluído</option>
+            </select>
+          </td>
+          <!-- Coluna de Tempo em andamento -->
+          <td><span>${tempo}</span></td>
+          <td><button onclick="editar(this)">✏️</button></td>
+          <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
+        `;
+        tr.dataset.id = p.id;
+        tbody.appendChild(tr);
+      });
+    }
+
+
+
+
+    // ---------- Editar / Salvar / Excluir ----------
+    function editar(botao) {
+      const tr = botao.closest("tr");
+      const salva = botao.textContent === "Salvar";
+      if (salva) {
+        salvar(tr);
+        botao.textContent = "✏️";
+        tr.querySelectorAll("input, textarea, select").forEach(el => {
+          if (el.tagName==="INPUT"||el.tagName==="TEXTAREA") {
+            el.disabled = true; el.readOnly = true;
+          } else {
+            el.disabled = true;
+          }
+        });
+      } else {
+        botao.textContent = "Salvar";
+        tr.querySelectorAll("input, textarea, select").forEach(el => {
+          const td = el.closest("td");
+          if (!td) return;
+          const colIndex = Array.from(tr.children).indexOf(td);
+          // colIndex 16 é a coluna de Status, 17 seria "Tempo em andamento" (somente exibição), 18 "Ações", 19 "Excluir".
+          // Bloquear edição na coluna 0 (Data) e na coluna 15 (Usuário).
+          const bloqueadas = [0, 15];
+          if (!bloqueadas.includes(colIndex)) {
+            if (el.tagName==="SELECT") {
+              el.disabled = false;
+            } else {
+              el.disabled = false;
+              el.readOnly = false;
+            }
+          }
+        });
+      }
+    }
+
+    async function salvar(tr) {
+      const btnSalvar = tr.querySelector("button");
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "🔄";
+
+      const id            = tr.dataset.id;
+      const dataLanc      = tr.children[0].innerText || "";
+      const idProj        = tr.children[1].querySelector("input").value.trim() || "";
+      const codPoste      = tr.children[2].querySelector("input").value.trim() || "";
+      const postePrimario = tr.children[3].querySelector("input").value.trim() || "";
+      const estrPrimaria  = tr.children[4].querySelector("input").value.trim() || "";
+      const posteSec      = tr.children[5].querySelector("input").value.trim() || "";
+      const estrSecund    = tr.children[6].querySelector("input").value.trim() || "";
+      const linhaViva     = tr.children[7].querySelector("textarea").value.trim() || "";
+      const servPodas     = tr.children[8].querySelector("textarea").value.trim() || "";
+      const obs           = tr.children[9].querySelector("textarea").value.trim() || "";
+      const foto1         = tr.children[10].querySelector("img")?.src || "";
+      const foto2         = tr.children[11].querySelector("img")?.src || "";
+      const foto3         = tr.children[12].querySelector("img")?.src || "";
+      const lat           = tr.children[13].querySelector("input").value.trim() || "";
+      const lng           = tr.children[14].querySelector("input").value.trim() || "";
+      const usuario       = tr.children[15].querySelector("input").value.trim() || "";
+      const status        = tr.children[16].querySelector("select")?.value || "";
+
+      try {
+        await db.ref(`postes/${id}`).update({
+          dataLancamento: dataLanc,
+          idProjeto:      idProj,
+          codigoPoste:    codPoste,
+          postePrimario,
+          estruturaPrimaria:   estrPrimaria,
+          posteSecundario:     posteSec,
+          estruturaSecundaria: estrSecund,
+          linhaViva,
+          servicosPodas: servPodas,
+          observacoes:   obs,
+          foto1,
+          foto2,
+          foto3,
+          latitude:      lat,
+          longitude:     lng,
+          usuario,
+          status
+        });
+        alert("✅ Poste atualizado com sucesso!");
+        filtrarPostes();
+      } catch (err) {
+        console.error(err);
+        alert(`❌ Falha ao salvar: ${err.message}`);
+      }
+
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "✏️";
+    }
+
+    async function excluir(botao) {
+      const tr = botao.closest("tr");
+      const id = tr.dataset.id;
+      if (!confirm("Deseja realmente excluir este poste?")) return;
+      botao.disabled = true;
+      botao.textContent = "...";
+      try {
+        await db.ref(`postes/${id}`).remove();
+        tr.remove();
+        alert("✅ Poste removido do Firebase!");
+        filtrarPostes();
+      } catch (err) {
+        console.error(err);
+        alert(`❌ Falha ao excluir: ${err.message}`);
+      }
+      botao.disabled = false;
+      botao.textContent = "🗑️";
+    }
+
+     // ---------- Sumários de Podas e Linha Viva ----------
+function somarValor(labelField, statusField, lista) {
+  let total = 0;
+  lista.forEach(p => {
+    const textoOriginal = (p[labelField] || "").trim().toLowerCase();
+    const stat = (p[statusField] || "").trim().toLowerCase();
+
+    const textoLimpo = textoOriginal.replace(/\s+/g, " ").replace(/\n/g, " ").trim();
+
+    // Ignora valores inválidos
+    if (
+      !textoLimpo || 
+      textoLimpo === "não recebido" || 
+      textoLimpo === "selecione os serviços" || 
+      stat === "concluído"
+    ) return;
+
+    const matches = textoLimpo.match(/r\$ ?[\d.,]+/gi);
+    if (matches) {
+      matches.forEach(val => {
+        const num = parseFloat(val.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+        total += num;
+      });
+    }
+  });
+  return total;
+}
+
+
+
+  function atualizarContadorStatus() {
+  const lista = todosOsPostes;
+
+  const totalProj   = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
+  const totalPostes = lista.length;
+ const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
+const andamento   = lista.filter(p => {
+  const s = normalizarTexto(p.status);
+  // conta como andamento se estiver em branco ou marcado como "em andamento"
+  return s === "" || s === "em andamento";
+}).length;
+
+
+  // 🧠 Apenas contam Podas ou Linha Viva se tiverem valor R$
+  const regexValor = /r\$ ?[\d.,]+/i;
+
+  const comPodas = lista.filter(p => {
+    const txt = (p.servicosPodas || "").toLowerCase().replace(/\n/g, " ");
+    return regexValor.test(txt);
+  }).length;
+
+  const podasPend = lista.filter(p => {
+    const txt = (p.servicosPodas || "").toLowerCase().replace(/\n/g, " ");
+    const status = normalizarTexto(p.status);
+    return regexValor.test(txt) && status !== "concluído";
+  }).length;
+
+  const comLV = lista.filter(p => {
+    const txt = (p.linhaViva || "").toLowerCase().replace(/\n/g, " ");
+    return regexValor.test(txt);
+  }).length;
+
+  const lvPend = lista.filter(p => {
+    const txt = (p.linhaViva || "").toLowerCase().replace(/\n/g, " ");
+    const status = normalizarTexto(p.status);
+    return regexValor.test(txt) && status !== "concluído";
+  }).length;
+
+  const totalPodas = somarValor("servicosPodas", "status", lista);
+  const totalLV = somarValor("linhaViva", "status", lista);
+
+  const totalPodasf = totalPodas > 0 ? totalPodas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
+  const totalLVf    = totalLV > 0 ? totalLV.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
+
+  const agora = new Date();
+  const horaAtual = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const dataAtual = agora.toLocaleDateString("pt-BR");
+
+  let msg =
+    `📚 ${totalProj} projetos | 🔢 ${totalPostes} postes | ✅ ${concluidos} concluídos | ` +
+    `🛠 ${andamento} em andamento | 🌿 ${comPodas} com poda | 🕳️ ${podasPend} podas pendentes | ` +
+    `⚡ ${comLV} com linha viva | ⏳ ${lvPend} linha viva pendente`;
+
+  if (totalPodasf) msg += ` | 💰 Total Podas: ${totalPodasf}`;
+  if (totalLVf)    msg += ` | 💰 Total LV: ${totalLVf}`;
+
+  msg += ` | 🕒 Atualizado em: ${dataAtual} às ${horaAtual}`;
+
+  document.getElementById("contadorStatus").innerText = msg;
+}
+
+
+    // ---------- Mostrar Mapa com Markers ----------
+function mostrarMapa(lista, iconOverride = null) {
+  const bounds = new google.maps.LatLngBounds();
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 6,
+    center: { lat: -8.0, lng: -35.0 },
+    gestureHandling: "greedy",
+    zoomControl: true,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+      position: google.maps.ControlPosition.TOP_RIGHT
+    },
+    streetViewControl: false,
+    fullscreenControl: true
+  });
+
+  const geocoder = new google.maps.Geocoder();
+
+  markers.forEach(m => {
+    if (m.markerInstance) m.markerInstance.setMap(null);
+    if (m.intervalId) clearInterval(m.intervalId);
+  });
+  markers = [];
+
+  lista.forEach(p => {
+    const lat = parseFloat(p.latitude);
+    const lng = parseFloat(p.longitude);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const status = (p.status || "").toLowerCase();
+    const iconPoste = status === "em andamento" || status === ""
+      ? "andamento.png"
+      : "poste.png";
+
+    const marcadorPoste = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      title: `Poste: ${p.codigoPoste || ""}`,
+      icon: {
+        url: iconPoste,
+        scaledSize: new google.maps.Size(32, 32)
+      }
+    });
+
+const podas = (p.servicosPodas || "").trim().toLowerCase();
+const temPodas = podas && podas !== "não recebido";
+
+if (temPodas) {
+  const marcadorPodas = new google.maps.Marker({
+    position: { lat: lat + 0.000009, lng: lng + 0.000009 },
+    map,
+    title: `Podas: ${p.codigoPoste || ""}`,
+    icon: {
+      url: "abustro.png",
+      scaledSize: new google.maps.Size(18, 18)
+    },
+    zIndex: google.maps.Marker.MAX_ZINDEX + 1
+  });
+  markers.push({ markerInstance: marcadorPodas });
+}
+
+
+    let infoContent = `
+      <div style="max-width:250px;font-family:Roboto,sans-serif;font-size:12px;color:#333">
+        <div style="background:#004d40;color:#fff;padding:12px 16px">
+          <div style="font-size:16px;font-weight:600">📁 Projeto: ${p.idProjeto || "N/A"}</div>
+          <div style="font-size:13px">🔖 PG: ${p.codigoPoste || "-"}</div>
+        </div>
+        <div style="padding:10px 14px;display:grid;grid-template-columns:1fr;gap:6px">
+          <div>📅 <b>Data:</b> ${p.dataLancamento || "-"}</div>
+          <div>🏗️ <b>Estrutura Primária:</b> ${p.estruturaPrimaria || "-"}</div>
+          <div>📍 <b>Poste Primário:</b> ${p.postePrimario || "-"}</div>
+          <div>🔗 <b>Poste Secundário:</b> ${p.posteSecundario || "-"}</div>
+          <div>⚙️ <b>Estrutura Secundária:</b> ${p.estruturaSecundaria || "-"}</div>
+          <div>⚡ <b>Linha Viva:</b> ${p.linhaViva || "-"}</div>
+          ${p.servicosPodas?.trim() ? `<div>🌿 <b>Serv. Podas:</b> ${p.servicosPodas}</div>` : ""}
+          <div>📝 <b>Obs.:</b> ${p.observacoes || "-"}</div>
+          <div>📡 <b>Lat/Lon:</b> ${p.latitude || "-"}, ${p.longitude || "-"}</div>
+          <div>🟢 <b>Status:</b> <span style="color:${status === "concluído" ? "#2e7d32" : "#ff9800"}">${p.status || "Em andamento"}</span></div>
+          <div>👤 <b>Usuário:</b> ${p.usuario || "-"}</div>
+          <div id="muni-${p.id}" style="display:none; margin-top:4px">
+            🗺️ <b>Município:</b> <span id="muni-text-${p.id}">Carregando...</span>
+          </div>
+        </div>
+        ${
+          (p.foto1 || p.foto2 || p.foto3)
+            ? `<div style="padding:8px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                ${p.foto1 ? `<a href="${p.foto1}" target="_blank"><img src="${p.foto1}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+                ${p.foto2 ? `<a href="${p.foto2}" target="_blank"><img src="${p.foto2}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+                ${p.foto3 ? `<a href="${p.foto3}" target="_blank"><img src="${p.foto3}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;border:1px solid #ccc" onerror="this.src='no-image.png'"></a>` : ""}
+              </div>
+              <div style="padding:10px 14px;text-align:center">
+                <button onclick="abrirTabelaCompleta('${p.foto1}','${p.foto2}','${p.foto3}')" 
+                  style="background:#1976d2;color:#fff;border:none;padding:6px 10px;font-size:12px;font-weight:bold;border-radius:4px;cursor:pointer">
+                  🔍 Ver Fotos
+                </button>
+              </div>` : ""
+        }
+      </div>`;
+
+    const infoWindow = new google.maps.InfoWindow({ content: infoContent });
+    marcadorPoste.addListener("click", () => infoWindow.open(map, marcadorPoste));
+
+    geocoder.geocode({ location: { lat, lng } }, (results, statusGeo) => {
+      let muni = "Não disponível";
+      if (statusGeo === "OK" && results.length) {
+        for (const res of results) {
+          const comp = res.address_components.find(c =>
+            c.types.includes("administrative_area_level_2") || c.types.includes("locality")
+          );
+          if (comp) {
+            muni = comp.long_name;
+            break;
+          }
+        }
+      }
+      const elCont = document.getElementById(`muni-${p.id}`);
+      const elTxt = document.getElementById(`muni-text-${p.id}`);
+      if (elCont && elTxt) {
+        elTxt.textContent = muni;
+        elCont.style.display = "block";
+      }
+    });
+
+    markers.push({ markerInstance: marcadorPoste });
+    bounds.extend(marcadorPoste.getPosition());
+  });
+
+  if (!bounds.isEmpty()) {
+    map.fitBounds(bounds);
+  }
+}
+
+
+
+   function abrirTabelaCompleta(f1, f2, f3) {
+  const html = `
+    <html>
+      <head>
+        <title>Fotos do Poste</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+          }
+          img {
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            max-width: 90%;
+            height: auto;
+            object-fit: contain;
+          }
+        </style>
+      </head>
+      <body>
+        ${f1 && f1 !== "undefined" ? `<img src="${f1}" onerror="this.src='no-image.png'">` : ""}
+        ${f2 && f2 !== "undefined" ? `<img src="${f2}" onerror="this.src='no-image.png'">` : ""}
+        ${f3 && f3 !== "undefined" ? `<img src="${f3}" onerror="this.src='no-image.png'">` : ""}
+      </body>
+    </html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+}
+
+
+    // ---------- Exportar CSV ----------
+    function exportarCSV(tudo=false) {
+      const headers = [
+        "Data/Hora","ID Projeto","PG","Poste Primário","Estrutura Primária",
+        "Poste Secundário","Estrutura Secundária","Linha Viva","Serviços Podas",
+        "Observações","Imagem 1 (URL)","Imagem 2 (URL)","Imagem 3 (URL)",
+        "Latitude","Longitude","Usuário","Status","Tempo em andamento"
+      ];
+      const linhas = [headers];
+      const fonte = tudo ? todosOsPostes : listaVisivel;
+      fonte.forEach(p => {
+        // formatar tempo em andamento para CSV (se existir)
+        const tempo = p.tempoDecorrido
+                      ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+                      : "";
+        linhas.push([
+          formatarDataBR(p.dataLancamento||""),
+          p.idProjeto||"", p.codigoPoste||"", p.postePrimario||"", p.estruturaPrimaria||"",
+          p.posteSecundario||"", p.estruturaSecundaria||"", p.linhaViva||"", p.servicosPodas||"",
+          p.observacoes||"", p.foto1||"", p.foto2||"", p.foto3||"", p.latitude||"",
+          p.longitude||"", p.usuario||"", p.status||"", tempo
+        ]);
+      });
+      const csv = "\uFEFF" + linhas.map(l => l.map(v => `"${v}"`).join(";")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const dataHoje = new Date().toISOString().split("T")[0];
+      link.href = URL.createObjectURL(blob);
+      link.download = tudo
+        ? `postes_todos_${dataHoje}.csv`
+        : `postes_pagina_${paginaAtual}_${dataHoje}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function toDataURL(url) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          canvas.getContext("2d").drawImage(img, 0, 0);
+          try {
+            const dataURL = canvas.toDataURL("image/jpeg");
+            resolve(dataURL);
+          } catch (err) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => {
+          resolve(null);
+        };
+        img.src = url;
+      });
+    }
+
+    // ================================
+    // 2) baixarPDFModelo: gera PDF usando somente imagens do Firebase Storage
+    async function baixarPDFModelo() {
+      const docs = (Array.isArray(listaVisivel) && listaVisivel.length)
+                   ? listaVisivel
+                   : (Array.isArray(todosOsPostes) ? todosOsPostes : []);
+      if (!docs.length) {
+        alert("❌ Nenhum poste disponível para gerar o PDF.");
+        return;
+      }
+
+      const urlsFirebase = docs
+        .flatMap(p => [p.foto1, p.foto2, p.foto3])
+        .filter(u => typeof u === "string" && u.includes("firebasestorage.googleapis.com"));
+      const uniqueUrls = [...new Set(urlsFirebase)];
+      const imgMap = {};
+      await Promise.all(
+        uniqueUrls.map(async url => {
+          const base64 = await toDataURL(url);
+          if (base64) imgMap[url] = base64;
+        })
+      );
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 40;
+      const lineH = 18;
+      const fTitle = 18, fText = 12;
+      const imgSize = 80, space = 10;
+
+      docs.forEach((p, i) => {
+        if (i > 0) doc.addPage();
+
+        let y = margin;
+        doc.setFontSize(fTitle);
+        doc.setFont("helvetica", "bold");
+        doc.text("Relatório de Postes Atbuilt", pageW / 2, y, { align: "center" });
+        y += 30;
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(100);
+        doc.line(margin, y, pageW - margin, y);
+        y += 25;
+
+        doc.setFontSize(fText);
+        doc.setFont("helvetica", "normal");
+        doc.text(`N° ${i + 1}`, margin, y);
+        y += lineH;
+
+        const campos = [
+          ["Data", formatarDataBR(p.dataLancamento || "")],
+          ["ID Projeto", p.idProjeto || ""],
+          ["PG", p.codigoPoste || ""],
+          ["Poste Primário", p.postePrimario || ""],
+          ["Estrutura Primária", p.estruturaPrimaria || ""],
+          ["Poste Secundário", p.posteSecundario || ""],
+          ["Estrutura Secundária", p.estruturaSecundaria || ""],
+          ["Linha Viva", p.linhaViva || ""],
+          ["Podas", p.servicosPodas || ""],
+          ["Observações", p.observacoes || ""],
+          ["Lat/Lng", (p.latitude || "") + (p.latitude && p.longitude ? " - " : "") + (p.longitude || "")],
+          ["Usuário", p.usuario || ""],
+          ["Status", p.status || ""],
+        ];
+        campos.forEach(([label, valor]) => {
+          doc.setFont("helvetica", "bold");
+          doc.text(`${label}:`, margin, y);
+          doc.setFont("helvetica", "normal");
+          const prefix = `${label}: `;
+          const xVal = margin + doc.getTextWidth(prefix) + 5;
+          const maxW = pageW - margin - xVal;
+          const splitText = doc.splitTextToSize(valor, maxW);
+          doc.text(splitText, xVal, y);
+          y += lineH * splitText.length;
+        });
+        y += 10;
+
+        let xImg = margin;
+        [p.foto1, p.foto2, p.foto3].forEach(origUrl => {
+          if (typeof origUrl === "string" && origUrl.includes("firebasestorage.googleapis.com")) {
+            const base64 = imgMap[origUrl];
+            if (base64) {
+              const mimeType = base64.startsWith("data:image/png") ? "PNG" : "JPEG";
+              doc.addImage(base64, mimeType, xImg, y, imgSize, imgSize);
+            } else {
+              doc.setDrawColor(200);
+              doc.rect(xImg, y, imgSize, imgSize);
+            }
+          } else {
+            doc.setDrawColor(200);
+            doc.rect(xImg, y, imgSize, imgSize);
+          }
+          xImg += imgSize + space;
+        });
+      });
+
+      const hoje = new Date();
+      const dd = String(hoje.getDate()).padStart(2, "0");
+      const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+      const yyyy = hoje.getFullYear();
+      const filename = `postes_${dd}-${mm}-${yyyy}.pdf`;
+      doc.save(filename);
+    }
+
+    // ---------- Toggle Power BI ----------
+    function togglePowerBI() {
+      const main = document.getElementById("mainContent");
+      const pbi  = document.getElementById("powerbiContainer");
+      if (pbi.style.display === "none") {
+        main.style.display = "none";
+        pbi.style.display  = "block";
+      } else {
+        pbi.style.display  = "none";
+        main.style.display = "block";
+      }
+    }
+
+    // ---------- Toggle Podas e Linha Viva ----------
+  function togglePodas() {
+  mostrandoSomentePodas = !mostrandoSomentePodas;
+  if (mostrandoSomentePodas) {
+    const lista = todosOsPostes.filter(p => {
+      const pod = (p.servicosPodas||"").trim().toLowerCase();
+      const st  = (p.status||"").trim().toLowerCase();
+      return pod && pod !== "não recebido" && st !== "concluído";
+    });
+    if (!lista.length) {
+      alert("Nenhum poste com serviço de poda em andamento.");
+      mostrandoSomentePodas = false;
+      return;
+    }
+    exibirPostes(lista);
+    // Passa 'abustro.png' como override
+     mostrarMapa(lista, 'abustro.png');
+    document.getElementById("btnMostrarPodas").textContent = "📌 Mostrar Todos";
+  } else {
+    exibirPostes(listaVisivel);
+    mostrarMapa(listaVisivel);
+    document.getElementById("btnMostrarPodas").textContent = "🌿 Mostrar Podas";
+  }
+}
+
+
+    async function verificarDuplicados() {
+      const mapa = new Map();
+      const duplicados = [];
+
+      document.querySelectorAll("#tabelaPostes tbody tr").forEach(tr => {
+        tr.style.backgroundColor = "";
+      });
+
+      todosOsPostes.forEach(p => {
+        const chave = `${(p.idProjeto || "").trim().toLowerCase()}|${(p.codigoPoste || "").trim().toLowerCase()}`;
+        if (mapa.has(chave)) {
+          duplicados.push(p);
+        } else {
+          mapa.set(chave, p.id);
+        }
+      });
+
+      if (duplicados.length === 0) {
+        alert("✅ Nenhum item duplicado encontrado.");
+        return;
+      }
+
+      document.querySelectorAll("#tabelaPostes tbody tr").forEach(tr => {
+        const id = tr.dataset.id;
+        if (duplicados.find(p => p.id === id)) {
+          tr.style.backgroundColor = "#ffcccc";
+        }
+      });
+
+      const simulado = duplicados.map(p => `• ${p.idProjeto} | ${p.codigoPoste} (${p.id})`).join('\n');
+      const confirmarSimulacao = confirm(`⚠️ Foram encontrados ${duplicados.length} registros duplicados com base em Projeto + Código.\n\nVisualização dos que seriam apagados:\n\n${simulado}\n\nDeseja realmente continuar?`);
+
+      if (!confirmarSimulacao) return;
+
+      const confirmarFinal = confirm("❌ Esta ação é irreversível. Confirma a exclusão dos itens destacados?");
+      if (!confirmarFinal) return;
+
+      for (const p of duplicados) {
+        try {
+          await db.ref(`postes/${p.id}`).remove();
+          console.log(`✅ Poste ${p.id} removido`);
+        } catch (err) {
+          console.error(`❌ Erro ao remover ${p.id}`, err);
+        }
+      }
+
+      alert(`🗑️ ${duplicados.length} registros duplicados foram apagados com sucesso.`);
+      carregarPostes();
+    }
+
+     function toggleLinhaViva() {
+  mostrandoSomenteLinhaViva = !mostrandoSomenteLinhaViva;
+  if (mostrandoSomenteLinhaViva) {
+    const lista = todosOsPostes.filter(p => {
+      const lv = (p.linhaViva || "").trim().toLowerCase();
+      const st = (p.status   || "").trim().toLowerCase();
+      // Ignora: vazio, "selecione os serviços" ou "não recebido"
+      const invalido = !lv || lv === "selecione os serviços" || lv === "não recebido";
+      return !invalido && st !== "concluído";
+    });
+    if (!lista.length) {
+      alert("Nenhum poste com linha viva em andamento.");
+      mostrandoSomenteLinhaViva = false;
+      return;
+    }
+    exibirPostes(lista);
+    mostrarMapa(lista);
+    document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Todos";
+  } else {
+    exibirPostes(listaVisivel);
+    mostrarMapa(listaVisivel);
+    document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Linha Viva";
+  }
+}
+
+
+
+  </script>
+</body>
+</html>
