@@ -15,6 +15,8 @@
   <!-- html2canvas + jsPDF bundle -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
   <!-- CSS Externo (ou inline) -->
   <link rel="stylesheet" href="estilos.css" />
@@ -196,7 +198,12 @@
           <button id="btnPowerBI" onclick="togglePowerBI()">📊 Power BI</button>
           <button id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
           <button id="btnMostrarLinhaViva" onclick="toggleLinhaViva()">⚡ Mostrar Linha Viva</button>
+          <button onclick="gerarRelatorioSintetico()">📑 Relatório Sintético</button>
+
+        
+          
         </div>
+
 
         <!-- Contador de Status -->
         <div id="contadorStatus"></div>
@@ -219,14 +226,12 @@
                 <th>Linha Viva</th>
                 <th>Serviços Podas</th>
                 <th>Observações</th>
-                <th>Foto1</th>
-                <th>Foto2</th>
-                <th>Foto3</th>
+            
                 <th>Lat</th>
                 <th>Lng</th>
                 <th>Usuário</th>
                 <th>Status</th>
-                <th>Tempo em andamento</th> <!-- Nova coluna -->
+                
                 <th>Ações</th>
                 <th>Excluir</th>
               </tr>
@@ -307,6 +312,8 @@
       });
     }
   </script>
+ 
+ 
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=initMap"
     async defer>
@@ -367,6 +374,11 @@
           document.getElementById("loginErro").innerText = `Erro: ${err.message}`;
         });
     }
+
+      function gerarRelatorioSintetico() {
+  window.location.href = "relatorios.html";
+}
+
 
     // ---------- Formatação de Data (DD/MM/YYYY HH:mm:ss) ----------
     function formatarDataBR(dataStr) {
@@ -433,12 +445,11 @@
                           normalizarTexto(p.codigoPoste).includes(filtroPoste);
         const okUsuario = !filtroUsuario ||
                           normalizarTexto(p.usuario).includes(filtroUsuario);
-        const statusNorm = normalizarTexto(p.status);
+       const statusNorm = normalizarTexto(p.status);
        const okStatus = !filtroStatus ||
       (filtroStatus === "em andamento"
       ? (statusNorm === "" || statusNorm === "em andamento")
       : statusNorm === filtroStatus);
-
 
         let okData = true;
         if (dataInicial) {
@@ -491,69 +502,46 @@
         pagDiv.appendChild(btn);
       }
     }
-
  // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
-    function exibirPostes(lista) {
-      const tbody = document.querySelector("#tabelaPostes tbody");
-      tbody.innerHTML = "";
+  function exibirPostes(lista) {
+  const tbody = document.querySelector("#tabelaPostes tbody");
+  tbody.innerHTML = "";
 
-      lista.forEach(p => {
-        const status = normalizarTexto(p.status || "em andamento");
-        const tempo = p.tempoDecorrido
-          ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
-          : "-";
+  lista.forEach(p => {
+    const status = normalizarTexto(p.status || "em andamento");
+    const tempo = p.tempoDecorrido
+      ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
+      : "-";
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span>${p.dataLancamento || ""}</span></td>
-          <td><input type="text" value="${p.idProjeto||""}" disabled></td>
-          <td><input type="text" value="${p.codigoPoste||""}" disabled></td>
-          <td><input type="text" value="${p.postePrimario||""}" disabled></td>
-          <td><input type="text" value="${p.estruturaPrimaria||""}" disabled></td>
-          <td><input type="text" value="${p.posteSecundario||""}" disabled></td>
-          <td><input type="text" value="${p.estruturaSecundaria||""}" disabled></td>
-          <td><textarea disabled>${p.linhaViva||""}</textarea></td>
-          <td><textarea disabled>${p.servicosPodas||""}</textarea></td>
-          <td><textarea disabled>${p.observacoes||""}</textarea></td>
-          <td>${
-            p.foto1
-              ? `<a href="${p.foto1}" target="_blank">
-                   <img class="miniatura" src="${p.foto1}" alt="Foto1">
-                 </a>`
-              : ``
-          }</td>
-          <td>${
-            p.foto2
-              ? `<a href="${p.foto2}" target="_blank">
-                   <img class="miniatura" src="${p.foto2}" alt="Foto2">
-                 </a>`
-              : ``
-          }</td>
-          <td>${
-            p.foto3
-              ? `<a href="${p.foto3}" target="_blank">
-                   <img class="miniatura" src="${p.foto3}" alt="Foto3">
-                 </a>`
-              : ``
-          }</td>
-          <td><input type="text" value="${p.latitude||""}" readonly></td>
-          <td><input type="text" value="${p.longitude||""}" readonly></td>
-          <td><input type="text" value="${p.usuario||""}" readonly></td>
-          <td>
-            <select disabled>
-              <option value="em andamento" ${status==="em andamento"? "selected":""}>Em andamento</option>
-              <option value="concluído"    ${status==="concluído"   ? "selected":""}>Concluído</option>
-            </select>
-          </td>
-          <!-- Coluna de Tempo em andamento -->
-          <td><span>${tempo}</span></td>
-          <td><button onclick="editar(this)">✏️</button></td>
-          <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
-        `;
-        tr.dataset.id = p.id;
-        tbody.appendChild(tr);
-      });
-    }
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span>${p.dataLancamento || ""}</span></td>
+      <td><input type="text" value="${p.idProjeto||""}" disabled></td>
+      <td><input type="text" value="${p.codigoPoste||""}" disabled></td>
+      <td><input type="text" value="${p.postePrimario||""}" disabled></td>
+      <td><input type="text" value="${p.estruturaPrimaria||""}" disabled></td>
+      <td><input type="text" value="${p.posteSecundario||""}" disabled></td>
+      <td><input type="text" value="${p.estruturaSecundaria||""}" disabled></td>
+      <td><textarea disabled>${p.linhaViva||""}</textarea></td>
+      <td><textarea disabled>${p.servicosPodas||""}</textarea></td>
+      <td><textarea disabled>${p.observacoes||""}</textarea></td>
+      <td><input type="text" value="${p.latitude||""}" readonly></td>
+      <td><input type="text" value="${p.longitude||""}" readonly></td>
+      <td><input type="text" value="${p.usuario||""}" readonly></td>
+      <td>
+        <select disabled>
+          <option value="em andamento" ${status==="em andamento"? "selected":""}>Em andamento</option>
+          <option value="concluído"    ${status==="concluído"   ? "selected":""}>Concluído</option>
+        </select>
+      </td>
+      
+      <td><button onclick="editar(this)">✏️</button></td>
+      <td><button class="delete-btn" onclick="excluir(this)">🗑️</button></td>
+    `;
+    tr.dataset.id = p.id;
+    tbody.appendChild(tr);
+  });
+}
 
 
     // ---------- Editar / Salvar / Excluir ----------
@@ -700,7 +688,7 @@ function somarValor(labelField, statusField, lista) {
 
   const totalProj   = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
   const totalPostes = lista.length;
-const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
+ const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
 const andamento   = lista.filter(p => {
   const s = normalizarTexto(p.status);
   // conta como andamento se estiver em branco ou marcado como "em andamento"
@@ -1204,7 +1192,10 @@ if (temPodas) {
     mostrarMapa(listaVisivel);
     document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Linha Viva";
   }
+
+
 }
+
   </script>
 </body>
 </html>
