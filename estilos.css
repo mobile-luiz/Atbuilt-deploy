@@ -456,8 +456,297 @@ select[disabled] {
   object-fit: contain;
 }
 
+#graficosContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.chart-wrapper {
+  position: relative; width:100%; height:300px;
+}
+.chart-wrapper canvas {
+  position:absolute !important;
+  top:0; left:0;
+  width:100% !important;
+  height:100% !important;
+}
+
+tr.duplicado {
+  background-color: #ffe6e6;
+}
+
+
+/* --- Estilização da Paginação Moderna --- */
+
+#paginacao {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px 0;
+    font-family: Arial, sans-serif;
+}
+
+#paginacao button {
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    color: #333;
+    padding: 8px 15px;
+    margin: 0 4px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+#paginacao button:hover:not(:disabled) {
+    background-color: #ddd;
+    border-color: #aaa;
+}
+
+#paginacao button:disabled {
+    background-color: #eee;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Estilo para o botão de página ativo */
+#paginacao .pagination-page-btn.active {
+    background-color: #007bff; /* Cor primária */
+    color: white;
+    border-color: #007bff;
+    font-weight: bold;
+}
+
+
+/* ================== Estilos Gerais ================== */
+body { 
+    font-family: Arial, sans-serif; 
+    margin: 0; 
+    padding: 0; 
+}
+h2 { 
+    margin-bottom: 16px; 
+}
+
+/* Header/Top Bar */
+.top-bar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px;
+}
+.site-logo { 
+    height: 40px; 
+}
+
+/* ===== Tela de Login ===== */
+.login-container {
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    height: 100vh;
+}
+.login-box {
+    border: 1px solid #ccc; 
+    padding: 20px; 
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.login-box input {
+    width: 250px; 
+    margin-bottom: 10px; 
+    padding: 8px; 
+    font-size: 14px;
+}
+.login-box button {
+    padding: 8px 12px; 
+    font-size: 14px; 
+    background: #1976d2;
+    color: #fff; 
+    border: none; 
+    border-radius: 4px; 
+    cursor: pointer;
+}
+.login-box button:hover { 
+    background: #155a9e; 
+}
+.login-erro { 
+    margin-top: 8px; 
+    color: red; 
+    font-size: 13px; 
+}
+.login-logo-container {
+    margin-top: 30px; 
+    text-align: center;
+}
+.login-logo {
+    height: 50px; 
+    margin-bottom: 8px;
+}
+.login-title {
+    font-size: 16px; 
+    color: #1a202c;
+}
+
+/* ===== Sistema após login ===== */
+.sistema-container { 
+    display: none; 
+    padding: 20px; 
+}
+.header {
+    background: #f5f5f5; 
+    border-radius: 8px; 
+    padding: 12px; 
+    margin-bottom: 16px;
+    display: flex; 
+    gap: 12px; 
+    flex-wrap: wrap;
+}
+.header div { 
+    display: flex; 
+    flex-direction: column; 
+}
+.header label { 
+    font-weight: bold; 
+    font-size: 14px; 
+    margin-bottom: 4px; 
+}
+.header input, .header select {
+    padding: 6px 8px; 
+    font-size: 14px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px;
+    width: 180px;
+}
+
+.acoes {
+    margin-bottom: 12px;
+}
+.acoes button {
+    margin-right: 8px; 
+    padding: 8px 12px; 
+    background: #1e88e5;
+    color: #fff; 
+    border: none; 
+    border-radius: 4px; 
+    font-size: 14px; 
+    cursor: pointer;
+}
+.acoes button:hover { 
+    background: #1565c0; 
+}
+
+#contadorStatus { 
+    margin-bottom: 12px; 
+    font-weight: bold; 
+}
+#paginacao button { 
+    margin: 0 4px; 
+    padding: 4px 8px; 
+    font-size: 14px; 
+}
+
+/* Tabela */
+.scroll-table {
+    max-height: 400px; 
+    overflow-y: auto; 
+    border: 1px solid #ddd;
+    margin-bottom: 16px;
+}
+#tabelaPostes {
+    width: 100%; 
+    border-collapse: collapse; 
+    font-family: Arial, sans-serif;
+}
+#tabelaPostes th, #tabelaPostes td {
+    padding: 8px; 
+    border: 1px solid #ccc; 
+    font-size: 14px; 
+    white-space: nowrap;
+}
+#tabelaPostes th {
+    background: #00695c; 
+    color: #fff; 
+    position: sticky; 
+    top: 0; 
+    z-index: 1;
+}
+.miniatura {
+    width: 50px; 
+    height: 50px; 
+    object-fit: cover; 
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+button.delete-btn {
+    background: transparent; 
+    border: none; 
+    font-size: 16px; 
+    color: #c62828; 
+    cursor: pointer;
+}
+button.delete-btn:hover { 
+    color: #b71c1c; 
+}
+
+/* Ajuste de coluna da tabela */
+#tabelaPostes td span {
+    display: inline-block;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Mapa */
+.map-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+#map {
+    height: 400px; 
+    margin-top: 12px;
+}
+.mapa-container { 
+    /* Esta classe foi mantida no HTML para altura, mas pode ser movida */
+}
+.map-legend-item { /* Nova classe para reduzir o estilo inline da legenda */
+    display: flex; 
+    gap: 16px; 
+    margin-bottom: 8px; 
+    align-items: center;
+}
+.legend-color-box { /* Nova classe para as bolinhas da legenda */
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 1px rgba(0,0,0,0.2);
+}
+.legend-em-andamento {
+    background-color: #ffc107;
+}
+.legend-concluido {
+    background-color: #dc3545;
+}
+
+
+/* ========== Estilos de impressão (PDF) ========== */
+@media print {
+    body { margin: 0; padding: 0; }
+    #pdfContainer { width: 210mm; margin: 0 auto; }
+    .acoes, .header input, .header select, #map, .mapa-container, #paginacao, #powerbiContainer {
+        display: none !important;
+    }
+    .scroll-table { max-height: none; }
+    #tabelaPostes { width: 100%; table-layout: fixed; }
+    #tabelaPostes th, #tabelaPostes td { word-wrap: break-word; }
+}
+
+
 
 
   
 }
+
 
