@@ -18,8 +18,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
+    <script src="https://unpkg.com/@googlemaps/markerclustererplus/dist/index.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
+
+
   <!-- CSS Externo (ou inline) -->
   <link rel="stylesheet" href="estilos.css" />
+
   <style>
     /* ================== Estilos Gerais ================== */
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
@@ -487,20 +493,79 @@
     }
 
     // ---------- Atualizar Paginação ----------
-    function atualizarPaginacao(totalPaginas) {
+     function atualizarPaginacao(totalPaginas) {
       const pagDiv = document.getElementById("paginacao");
       pagDiv.innerHTML = "";
-      for (let i = 1; i <= totalPaginas; i++) {
-        const btn = document.createElement("button");
-        btn.textContent = i;
-        btn.disabled = i === paginaAtual;
-        btn.onclick = () => {
-          paginaAtual = i;
-          filtrarPostes();
-        };
-        pagDiv.appendChild(btn);
+
+      if (totalPaginas <= 1) {
+          // Não mostra a paginação se houver apenas uma página
+          return;
       }
+
+      const maxBotoes = 5; // Número máximo de botões de página para exibir
+      let startPage = Math.max(1, paginaAtual - Math.floor(maxBotoes / 2));
+      let endPage = Math.min(totalPaginas, startPage + maxBotoes - 1);
+
+      if (endPage - startPage + 1 < maxBotoes) {
+          startPage = Math.max(1, endPage - maxBotoes + 1);
+      }
+      
+      // ------------------------------------
+      // 1. Botão ANTERIOR
+      // ------------------------------------
+      const btnAnterior = document.createElement("button");
+      btnAnterior.textContent = "« Anterior";
+      btnAnterior.disabled = paginaAtual === 1;
+      btnAnterior.classList.add("pagination-btn");
+      btnAnterior.onclick = () => {
+          paginaAtual = Math.max(1, paginaAtual - 1);
+          filtrarPostes();
+      };
+      pagDiv.appendChild(btnAnterior);
+
+      // ------------------------------------
+      // 2. Botões Numéricos
+      // ------------------------------------
+      for (let i = startPage; i <= endPage; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = i;
+          btn.disabled = i === paginaAtual;
+          btn.classList.add("pagination-page-btn");
+          if (i === paginaAtual) {
+              btn.classList.add("active");
+          }
+          btn.onclick = () => {
+              paginaAtual = i;
+              filtrarPostes();
+          };
+          pagDiv.appendChild(btn);
+      }
+
+      // ------------------------------------
+      // 3. Indicador de Status (Página X de Y)
+      // ------------------------------------
+      const spanStatus = document.createElement("span");
+      spanStatus.textContent = `Página ${paginaAtual} de ${totalPaginas}`;
+      spanStatus.style.margin = "0 10px";
+      spanStatus.style.fontWeight = "bold";
+      pagDiv.appendChild(spanStatus);
+      
+      // ------------------------------------
+      // 4. Botão PRÓXIMA
+      // ------------------------------------
+      const btnProxima = document.createElement("button");
+      btnProxima.textContent = "Próxima »";
+      btnProxima.disabled = paginaAtual === totalPaginas;
+      btnProxima.classList.add("pagination-btn");
+      btnProxima.onclick = () => {
+          paginaAtual = Math.min(totalPaginas, paginaAtual + 1);
+          filtrarPostes();
+      };
+      pagDiv.appendChild(btnProxima);
     }
+
+
+
  // ---------- Exibir Linhas na Tabela (agora inclui tempo decorrido) ----------
   function exibirPostes(lista) {
   const tbody = document.querySelector("#tabelaPostes tbody");
@@ -879,7 +944,6 @@ if (temPodas) {
 }
 
 
-
    function abrirTabelaCompleta(f1, f2, f3) {
   const html = `
     <html>
@@ -915,169 +979,6 @@ if (temPodas) {
   win.document.close();
 }
 
-
-    // ---------- Exportar CSV ----------
-    function exportarCSV(tudo=false) {
-      const headers = [
-        "Data/Hora","ID Projeto","PG","Poste Primário","Estrutura Primária",
-        "Poste Secundário","Estrutura Secundária","Linha Viva","Serviços Podas",
-        "Observações","Imagem 1 (URL)","Imagem 2 (URL)","Imagem 3 (URL)",
-        "Latitude","Longitude","Usuário","Status","Tempo em andamento"
-      ];
-      const linhas = [headers];
-      const fonte = tudo ? todosOsPostes : listaVisivel;
-      fonte.forEach(p => {
-        // formatar tempo em andamento para CSV (se existir)
-        const tempo = p.tempoDecorrido
-                      ? `${p.tempoDecorrido.dias}d ${p.tempoDecorrido.horas}h`
-                      : "";
-        linhas.push([
-          formatarDataBR(p.dataLancamento||""),
-          p.idProjeto||"", p.codigoPoste||"", p.postePrimario||"", p.estruturaPrimaria||"",
-          p.posteSecundario||"", p.estruturaSecundaria||"", p.linhaViva||"", p.servicosPodas||"",
-          p.observacoes||"", p.foto1||"", p.foto2||"", p.foto3||"", p.latitude||"",
-          p.longitude||"", p.usuario||"", p.status||"", tempo
-        ]);
-      });
-      const csv = "\uFEFF" + linhas.map(l => l.map(v => `"${v}"`).join(";")).join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const dataHoje = new Date().toISOString().split("T")[0];
-      link.href = URL.createObjectURL(blob);
-      link.download = tudo
-        ? `postes_todos_${dataHoje}.csv`
-        : `postes_pagina_${paginaAtual}_${dataHoje}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function toDataURL(url) {
-      return new Promise(resolve => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          canvas.getContext("2d").drawImage(img, 0, 0);
-          try {
-            const dataURL = canvas.toDataURL("image/jpeg");
-            resolve(dataURL);
-          } catch (err) {
-            resolve(null);
-          }
-        };
-        img.onerror = () => {
-          resolve(null);
-        };
-        img.src = url;
-      });
-    }
-
-    // ================================
-    // 2) baixarPDFModelo: gera PDF usando somente imagens do Firebase Storage
-    async function baixarPDFModelo() {
-      const docs = (Array.isArray(listaVisivel) && listaVisivel.length)
-                   ? listaVisivel
-                   : (Array.isArray(todosOsPostes) ? todosOsPostes : []);
-      if (!docs.length) {
-        alert("❌ Nenhum poste disponível para gerar o PDF.");
-        return;
-      }
-
-      const urlsFirebase = docs
-        .flatMap(p => [p.foto1, p.foto2, p.foto3])
-        .filter(u => typeof u === "string" && u.includes("firebasestorage.googleapis.com"));
-      const uniqueUrls = [...new Set(urlsFirebase)];
-      const imgMap = {};
-      await Promise.all(
-        uniqueUrls.map(async url => {
-          const base64 = await toDataURL(url);
-          if (base64) imgMap[url] = base64;
-        })
-      );
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-      const pageW = doc.internal.pageSize.getWidth();
-      const margin = 40;
-      const lineH = 18;
-      const fTitle = 18, fText = 12;
-      const imgSize = 80, space = 10;
-
-      docs.forEach((p, i) => {
-        if (i > 0) doc.addPage();
-
-        let y = margin;
-        doc.setFontSize(fTitle);
-        doc.setFont("helvetica", "bold");
-        doc.text("Relatório de Postes Atbuilt", pageW / 2, y, { align: "center" });
-        y += 30;
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(100);
-        doc.line(margin, y, pageW - margin, y);
-        y += 25;
-
-        doc.setFontSize(fText);
-        doc.setFont("helvetica", "normal");
-        doc.text(`N° ${i + 1}`, margin, y);
-        y += lineH;
-
-        const campos = [
-          ["Data", formatarDataBR(p.dataLancamento || "")],
-          ["ID Projeto", p.idProjeto || ""],
-          ["PG", p.codigoPoste || ""],
-          ["Poste Primário", p.postePrimario || ""],
-          ["Estrutura Primária", p.estruturaPrimaria || ""],
-          ["Poste Secundário", p.posteSecundario || ""],
-          ["Estrutura Secundária", p.estruturaSecundaria || ""],
-          ["Linha Viva", p.linhaViva || ""],
-          ["Podas", p.servicosPodas || ""],
-          ["Observações", p.observacoes || ""],
-          ["Lat/Lng", (p.latitude || "") + (p.latitude && p.longitude ? " - " : "") + (p.longitude || "")],
-          ["Usuário", p.usuario || ""],
-          ["Status", p.status || ""],
-        ];
-        campos.forEach(([label, valor]) => {
-          doc.setFont("helvetica", "bold");
-          doc.text(`${label}:`, margin, y);
-          doc.setFont("helvetica", "normal");
-          const prefix = `${label}: `;
-          const xVal = margin + doc.getTextWidth(prefix) + 5;
-          const maxW = pageW - margin - xVal;
-          const splitText = doc.splitTextToSize(valor, maxW);
-          doc.text(splitText, xVal, y);
-          y += lineH * splitText.length;
-        });
-        y += 10;
-
-        let xImg = margin;
-        [p.foto1, p.foto2, p.foto3].forEach(origUrl => {
-          if (typeof origUrl === "string" && origUrl.includes("firebasestorage.googleapis.com")) {
-            const base64 = imgMap[origUrl];
-            if (base64) {
-              const mimeType = base64.startsWith("data:image/png") ? "PNG" : "JPEG";
-              doc.addImage(base64, mimeType, xImg, y, imgSize, imgSize);
-            } else {
-              doc.setDrawColor(200);
-              doc.rect(xImg, y, imgSize, imgSize);
-            }
-          } else {
-            doc.setDrawColor(200);
-            doc.rect(xImg, y, imgSize, imgSize);
-          }
-          xImg += imgSize + space;
-        });
-      });
-
-      const hoje = new Date();
-      const dd = String(hoje.getDate()).padStart(2, "0");
-      const mm = String(hoje.getMonth() + 1).padStart(2, "0");
-      const yyyy = hoje.getFullYear();
-      const filename = `postes_${dd}-${mm}-${yyyy}.pdf`;
-      doc.save(filename);
-    }
 
     // ---------- Toggle Power BI ----------
     function togglePowerBI() {
@@ -1192,10 +1093,10 @@ if (temPodas) {
     document.getElementById("btnMostrarLinhaViva").textContent = "⚡ Mostrar Linha Viva";
   }
 
-
 }
 
   </script>
 </body>
 </html>
+
 
