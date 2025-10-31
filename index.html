@@ -140,9 +140,14 @@
     <div id="mainContent" class="container">
       <!-- Início do conteúdo capturado pelo PDF -->
       <div id="pdfContainer">
-  <div class="top-bar">
+<div class="top-bar">
   <h2>Atbuilt – Sistema de Gestão de Postes</h2>
-  <img src="logo-atbuilt.png" alt="Logo Atbuilt" class="site-logo" />
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <button id="logout-btn" onclick="fazerLogout()">
+      <span style="font-size: 16px;">🚪</span> Sair
+    </button>
+    <img src="logo-atbuilt.png" alt="Logo Atbuilt" class="site-logo" />
+  </div>
 </div>
 
         <!-- Filtros -->
@@ -341,11 +346,12 @@
     let todosOsPostes = [];
     let listaVisivel = [];
     let paginaAtual = 1;
-    const itensPorPagina = 100;
+    const itensPorPagina = 200;
     let map;
     let markers = [];
     let mostrandoSomentePodas = false;
     let mostrandoSomenteLinhaViva = false;
+    
 
     // ---------- Calcular Tempo Decorrido (dias e horas) ----------
     function calcularTempoDecorrido(dataLancStr) {
@@ -362,26 +368,48 @@
     }
 
     // ---------- Função de Login ----------
-    function fazerLogin() {
-      const email = document.getElementById("loginEmail").value.trim();
-      const senha = document.getElementById("loginSenha").value.trim();
-      if (!email || !senha) {
-        document.getElementById("loginErro").innerText = "Por favor, preencha e-mail e senha.";
-        return;
-      }
-      auth.signInWithEmailAndPassword(email, senha)
-        .then(() => {
-          document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("sistemaContainer").style.display = "block";
-          carregarPostes();
-        })
-        .catch(err => {
-          document.getElementById("loginErro").innerText = `Erro: ${err.message}`;
-        });
-    }
+ // ---------- Função de Login ----------
+function fazerLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const senha = document.getElementById("loginSenha").value.trim();
+      if (!email || !senha) {
+        document.getElementById("loginErro").innerText = "Por favor, preencha e-mail e senha.";
+        return;
+      }
+      auth.signInWithEmailAndPassword(email, senha)
+        .then(() => {
+          document.getElementById("loginContainer").style.display = "none";
+          document.getElementById("sistemaContainer").style.display = "block";
+          carregarPostes();
+        })
+        .catch(err => {
+          document.getElementById("loginErro").innerText = `Erro: ${err.message}`;
+        });
+    }
 
-      function gerarRelatorioSintetico() {
-  window.location.href = "relatorios.html";
+// ------------------------------------------------------------------
+// ---------- NOVO: Função de Logout (Sair) para o Firebase ----------
+// ------------------------------------------------------------------
+function fazerLogout() {
+    // Adiciona uma confirmação para evitar cliques acidentais
+    if (confirm("Você tem certeza que deseja sair do sistema Atbuilt?")) {
+        // Encerra a sessão do usuário com o Firebase
+        auth.signOut()
+            .then(() => {
+                // Sucesso ao sair: Oculta o sistema e mostra a tela de login
+                document.getElementById("loginContainer").style.display = "flex";
+                document.getElementById("sistemaContainer").style.display = "none";
+                
+                // Limpa campos e mensagens de erro
+                document.getElementById("loginEmail").value = "";
+                document.getElementById("loginSenha").value = "";
+                document.getElementById("loginErro").innerText = "";
+            })
+            .catch(err => {
+                alert(`❌ Falha ao sair: ${err.message}`);
+                console.error("Erro ao fazer logout:", err);
+            });
+    }
 }
 
 
@@ -1098,5 +1126,7 @@ if (temPodas) {
   </script>
 </body>
 </html>
+
+
 
 
