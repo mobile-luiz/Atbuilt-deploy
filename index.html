@@ -391,6 +391,7 @@
       overflow: hidden;
       margin-top: 12px;
       box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+      position: relative;
     }
     
     #map {
@@ -558,11 +559,11 @@
     </div>
 
     <div class="acoes">
-
-      <button onclick="baixarPDFModelo()">📄 Baixar PDF</button>
+      <button onclick="baixarPDFModelo()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+        📄 Gerar PDF (Ctrl+P)
+      </button>
       <button id="btnPowerBI" onclick="togglePowerBI()">📊 Power BI</button>
       <button class="warning" id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
-      
     </div>
 
     <div id="contadorStatus"></div>
@@ -597,34 +598,108 @@
     </div>
 
     <h3 class="map-title">📍 Mapa dos Postes</h3>
-    <div style="display: flex; gap: 16px; margin-bottom: 8px; align-items: center;">
-      <div style="display: flex; align-items: center;">
-        <span style="
-          display: inline-block;
-          width: 12px;
-          height: 12px;
-          background-color: #ffc107;
-          border-radius: 50%;
-          margin-right: 6px;
-          box-shadow: 0 0 1px rgba(0,0,0,0.2);
-        "></span>
-        Em andamento
+
+    <!-- Controles do Mapa -->
+    <div style="
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    ">
+      <!-- Legenda -->
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #ffc107;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(255,193,7,0.3);
+          "></span>
+          <span style="font-size: 13px; color: #333;">Em andamento</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(220,53,69,0.3);
+          "></span>
+          <span style="font-size: 13px; color: #333;">Concluído</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: url('poste.png') center/contain no-repeat;
+          "></span>
+          <span style="font-size: 13px; color: #333;">Poste</span>
+        </div>
       </div>
-      <div style="display: flex; align-items: center;">
-        <span style="
-          display: inline-block;
-          width: 12px;
-          height: 12px;
-          background-color: #dc3545;
-          border-radius: 50%;
-          margin-right: 6px;
-          box-shadow: 0 0 1px rgba(0,0,0,0.2);
-        "></span>
-        Concluído
+
+      <!-- Botões de Controle -->
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="recentrarMapa()" style="
+          padding: 8px 16px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 20px;
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.3s;
+          box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+          <span>🎯</span> Recentrar
+        </button>
+        
+        <button onclick="alternarVisualizacaoMapa()" style="
+          padding: 8px 16px;
+          background: white;
+          color: #333;
+          border: 1px solid #ddd;
+          border-radius: 20px;
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.3s;
+        " onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">
+          <span>🛰️</span> Satélite
+        </button>
+        
+        <div style="
+          padding: 8px 16px;
+          background: #f8f9fa;
+          border-radius: 20px;
+          font-size: 12px;
+          color: #666;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <span>📍</span>
+          <span id="contadorMapa">0 postes</span>
+        </div>
       </div>
     </div>
-    
-    <div id="map" class="mapa-container" style="height:400px; margin-top:12px;"></div>
+
+    <!-- Container do Mapa -->
+    <div id="map" class="mapa-container" style="height:500px; border-radius: 12px;"></div>
 
     <div id="powerbiContainer" class="powerbi-container" style="display: none; width: 100%; height: 80vh; position: relative;">
       <button onclick="togglePowerBI()" style="position: absolute; top: 16px; right: 16px; z-index: 10; background: #1e88e5; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
@@ -655,6 +730,18 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
+    // ========== CONFIGURAÇÕES DO MAPA ==========
+    const MAP_CONFIG = {
+      MAX_MARKERS: 500,
+      BATCH_SIZE: 50,
+      CLUSTER_MIN_SIZE: 3,
+      CLUSTER_MAX_ZOOM: 14,
+      CLUSTER_GRID_SIZE: 60,
+      GEOCODING_DELAY: 200,
+      MARKER_ICON_SIZE: 40,
+      ANIMATION_DURATION: 300,
+    };
+
     // ========== VARIÁVEIS GLOBAIS ==========
     let todosOsPostes = [];
     let listaFiltrada = [];
@@ -672,6 +759,12 @@
     let mapaInicializado = false;
     let debounceTimer = null;
     let userEmail = "";
+    
+    // Filas e controle de performance
+    let geocodingQueue = [];
+    let geocodingInProgress = false;
+    let mapUpdateTimeout = null;
+    let isMapUpdating = false;
 
     // ========== DEBOUNCE PARA FILTRAGEM ==========
     function debouncedFiltrarPostes() {
@@ -679,52 +772,171 @@
       debounceTimer = setTimeout(() => filtrarPostes(), 300);
     }
 
-    // ========== INICIALIZAR MAPA ==========
+    // ========== INICIALIZAR MAPA COM TEMA MODERNO ==========
     function inicializarMapa() {
       if (mapaInicializado) return;
       
-      map = new google.maps.Map(document.getElementById("map"), {
+      const mapElement = document.getElementById("map");
+      if (!mapElement) return;
+
+      // Tema moderno e limpo para o mapa
+      const mapStyles = [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "transit",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "administrative",
+          elementType: "labels",
+          stylers: [{ visibility: "on" }]
+        },
+        {
+          featureType: "road",
+          elementType: "labels",
+          stylers: [{ visibility: "on" }]
+        },
+        {
+          featureType: "water",
+          elementType: "geometry",
+          stylers: [{ color: "#a0d6ff" }]
+        },
+        {
+          featureType: "water",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "landscape",
+          elementType: "geometry",
+          stylers: [{ color: "#f5f5f5" }]
+        },
+        {
+          featureType: "road",
+          elementType: "geometry",
+          stylers: [{ color: "#ffffff" }]
+        },
+        {
+          featureType: "road",
+          elementType: "geometry.stroke",
+          stylers: [{ color: "#e9e9e9" }]
+        },
+        {
+          featureType: "road.highway",
+          elementType: "geometry",
+          stylers: [{ color: "#fadfad" }]
+        }
+      ];
+
+      map = new google.maps.Map(mapElement, {
         center: { lat: -8.0, lng: -35.0 },
         zoom: 6,
         gestureHandling: "greedy",
         zoomControl: true,
-        mapTypeControl: true,
-        streetViewControl: false,
+        mapTypeControl: false,
+        streetViewControl: true,
         fullscreenControl: true,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
+        styles: mapStyles,
+        backgroundColor: "#f5f5f5",
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        minZoom: 4,
+        maxZoom: 18
       });
       
       geocoder = new google.maps.Geocoder();
       mapaInicializado = true;
       
+      // Inicializar cluster com configurações otimizadas
       if (window.MarkerClusterer) {
         markerCluster = new MarkerClusterer(map, [], {
           imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m',
-          minimumClusterSize: 2,
-          maxZoom: 15
+          minimumClusterSize: MAP_CONFIG.CLUSTER_MIN_SIZE,
+          maxZoom: MAP_CONFIG.CLUSTER_MAX_ZOOM,
+          gridSize: MAP_CONFIG.CLUSTER_GRID_SIZE,
+          styles: [
+            {
+              textColor: 'white',
+              url: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclustererplus/images/m1.png',
+              height: 53,
+              width: 53,
+              textSize: 12,
+              anchor: [26, 0]
+            },
+            {
+              textColor: 'white',
+              url: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclustererplus/images/m2.png',
+              height: 56,
+              width: 56,
+              textSize: 12,
+              anchor: [28, 0]
+            },
+            {
+              textColor: 'white',
+              url: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclustererplus/images/m3.png',
+              height: 66,
+              width: 66,
+              textSize: 12,
+              anchor: [33, 0]
+            },
+            {
+              textColor: 'white',
+              url: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclustererplus/images/m4.png',
+              height: 78,
+              width: 78,
+              textSize: 12,
+              anchor: [39, 0]
+            },
+            {
+              textColor: 'white',
+              url: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclustererplus/images/m5.png',
+              height: 90,
+              width: 90,
+              textSize: 12,
+              anchor: [45, 0]
+            }
+          ],
+          zoomOnClick: true,
+          averageCenter: true,
+          ignoreHidden: true
         });
       }
+
+      window.addEventListener('resize', debounce(() => {
+        if (map) {
+          google.maps.event.trigger(map, 'resize');
+        }
+      }, 250));
     }
 
     // ========== LIMPAR MAPA COMPLETAMENTE ==========
     function limparMapaCompletamente() {
-      if (markerCluster) markerCluster.clearMarkers();
+      if (markerCluster) {
+        markerCluster.clearMarkers();
+      }
       
       markers.forEach((markerData) => {
-        if (markerData.marker) markerData.marker.setMap(null);
+        if (markerData.marker) {
+          markerData.marker.setMap(null);
+          google.maps.event.clearInstanceListeners(markerData.marker);
+        }
       });
       
-      infoWindows.forEach((infoWindow) => infoWindow.close());
+      infoWindows.forEach((infoWindow) => {
+        if (infoWindow) {
+          infoWindow.close();
+          google.maps.event.clearInstanceListeners(infoWindow);
+        }
+      });
       
       markers.clear();
       infoWindows.clear();
       cachedMunicipalities.clear();
+      geocodingQueue = [];
     }
 
     // ========== MOSTRAR MAPA OTIMIZADO ==========
@@ -734,500 +946,610 @@
         return;
       }
       
-      limparMapaCompletamente();
-      
-      const novosMarkers = [];
-      const bounds = new google.maps.LatLngBounds();
-      
-      // Processar em lotes para performance
-      const batchSize = 50;
-      for (let i = 0; i < lista.length; i += batchSize) {
-        const batch = lista.slice(i, i + batchSize);
-        await Promise.all(batch.map((poste) => criarMarkerAsync(poste)));
+      if (isMapUpdating) {
+        clearTimeout(mapUpdateTimeout);
+        mapUpdateTimeout = setTimeout(() => mostrarMapaOtimizado(lista), 100);
+        return;
       }
       
-      if (markerCluster) {
-        novosMarkers.forEach(marker => markerCluster.addMarker(marker));
-      }
+      isMapUpdating = true;
       
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 50 });
-      }
-      
-      async function criarMarkerAsync(poste) {
-        const lat = parseFloat(poste.latitude);
-        const lng = parseFloat(poste.longitude);
-        if (isNaN(lat) || isNaN(lng)) return;
+      try {
+        limparMapaCompletamente();
         
-        // --- USANDO POSTE.PNG ---
-        const iconUrl = "poste.png";
-        
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: map,
-          title: `${poste.codigoPoste || "Poste"} - ${poste.idProjeto || "Projeto"}`,
-          icon: {
-            url: iconUrl,
-            scaledSize: new google.maps.Size(40, 40)
-          },
-          optimized: true
+        const listaComCoordenadas = lista.filter(p => {
+          const lat = parseFloat(p.latitude);
+          const lng = parseFloat(p.longitude);
+          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
         });
         
-        bounds.extend(marker.position);
+        const contadorMapa = document.getElementById('contadorMapa');
+        if (contadorMapa) {
+          contadorMapa.textContent = `${listaComCoordenadas.length} postes no mapa`;
+        }
         
-        const infoWindow = new google.maps.InfoWindow({
-          content: criarConteudoInfoWindow(poste),
-          maxWidth: 300
-        });
+        let listaParaMapa = listaComCoordenadas;
+        if (listaComCoordenadas.length > MAP_CONFIG.MAX_MARKERS) {
+          console.log(`Limitando mapa a ${MAP_CONFIG.MAX_MARKERS} de ${listaComCoordenadas.length} marcadores`);
+          listaParaMapa = listaComCoordenadas.slice(0, MAP_CONFIG.MAX_MARKERS);
+          mostrarAvisoMapa(`${listaComCoordenadas.length} postes com localização. Mostrando os ${MAP_CONFIG.MAX_MARKERS} mais recentes.`);
+        }
         
-        marker.addListener("click", () => {
-          infoWindows.forEach(iw => iw.close());
-          infoWindow.open(map, marker);
-        });
+        if (listaParaMapa.length === 0) {
+          mostrarAvisoMapa("Nenhum poste com localização válida para exibir no mapa.");
+          isMapUpdating = false;
+          return;
+        }
         
-        markers.set(poste.id, { marker, infoWindow, data: poste });
-        infoWindows.set(poste.id, infoWindow);
-        novosMarkers.push(marker);
+        const novosMarkers = [];
+        const bounds = new google.maps.LatLngBounds();
         
-        buscarMunicipioAsync(poste.id, lat, lng);
+        for (let i = 0; i < listaParaMapa.length; i += MAP_CONFIG.BATCH_SIZE) {
+          const batch = listaParaMapa.slice(i, i + MAP_CONFIG.BATCH_SIZE);
+          
+          await new Promise(resolve => {
+            setTimeout(() => {
+              batch.forEach(poste => {
+                const marker = criarMarker(poste, bounds);
+                if (marker) novosMarkers.push(marker);
+              });
+              resolve();
+            }, 10);
+          });
+        }
+        
+        if (markerCluster && novosMarkers.length > 0) {
+          markerCluster.addMarkers(novosMarkers);
+        }
+        
+        if (!bounds.isEmpty() && novosMarkers.length > 0) {
+          map.fitBounds(bounds, { 
+            padding: { top: 50, right: 50, bottom: 50, left: 50 },
+            duration: MAP_CONFIG.ANIMATION_DURATION 
+          });
+        }
+        
+        processGeocodingQueue();
+        
+      } catch (error) {
+        console.error("Erro ao atualizar mapa:", error);
+        mostrarAvisoMapa("Erro ao carregar mapa. Tente novamente.");
+      } finally {
+        isMapUpdating = false;
       }
     }
 
-// ========== FUNÇÃO PARA INFO WINDOW MODERNA E SIMPLES ==========
+    // ========== CRIAR MARCADOR INDIVIDUAL ==========
+    function criarMarker(poste, bounds) {
+      const lat = parseFloat(poste.latitude);
+      const lng = parseFloat(poste.longitude);
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
+      
+      const iconUrl = "poste.png";
+      const status = normalizarTexto(poste.status);
+      const isConcluido = status === "concluído";
+      
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map: map,
+        title: `${poste.codigoPoste || "Poste"} - ${poste.idProjeto || "Projeto"}`,
+        icon: {
+          url: iconUrl,
+          scaledSize: new google.maps.Size(MAP_CONFIG.MARKER_ICON_SIZE, MAP_CONFIG.MARKER_ICON_SIZE),
+          anchor: new google.maps.Point(MAP_CONFIG.MARKER_ICON_SIZE / 2, MAP_CONFIG.MARKER_ICON_SIZE),
+          labelOrigin: new google.maps.Point(MAP_CONFIG.MARKER_ICON_SIZE / 2, -5)
+        },
+        optimized: true,
+        animation: google.maps.Animation.DROP,
+        zIndex: isConcluido ? 1 : 2
+      });
+      
+      if (bounds) bounds.extend(marker.position);
+      
+      const infoWindow = new google.maps.InfoWindow({
+        content: criarConteudoInfoWindow(poste),
+        maxWidth: 350,
+        pixelOffset: new google.maps.Size(0, -30)
+      });
+      
+      marker.addListener("click", () => {
+        infoWindows.forEach(iw => iw.close());
+        infoWindow.open(map, marker);
+      });
+      
+      marker.addListener("dblclick", () => {
+        ativarStreetView(lat, lng);
+      });
+      
+      marker.addListener("mouseover", () => {
+        marker.setAnimation(google.maps.Animation.BOUNCE);
+        setTimeout(() => marker.setAnimation(null), 750);
+      });
+      
+      markers.set(poste.id, { marker, infoWindow, data: poste });
+      infoWindows.set(poste.id, infoWindow);
+      
+      adicionarGeocodingFila(poste.id, lat, lng);
+      
+      return marker;
+    }
 
-function criarConteudoInfoWindow(poste) {
-  const status = normalizarTexto(poste.status);
-  const muni = cachedMunicipalities.get(poste.id) || "Carregando...";
-  const tempo = poste.tempoDecorrido ? 
-    `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
-  
-  // Formatar valores monetários se existirem
-  const formatarValor = (texto) => {
-    if (!texto) return "-";
-    const match = texto.match(/r\$ ?[\d.,]+/i);
-    return match ? match[0].toUpperCase() : texto;
-  };
+    // ========== FUNÇÃO PARA INFO WINDOW MODERNA ==========
+    function criarConteudoInfoWindow(poste) {
+      const status = normalizarTexto(poste.status);
+      const muni = cachedMunicipalities.get(poste.id) || "Carregando...";
+      const tempo = poste.tempoDecorrido ? 
+        `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
+      
+      const formatarValor = (texto) => {
+        if (!texto) return "-";
+        const match = texto.match(/r\$ ?[\d.,]+/i);
+        return match ? match[0].toUpperCase() : texto;
+      };
 
-  // Função para criar badges de status
-  const getStatusBadge = () => {
-    const isConcluido = status === "concluído";
-    return `
-      <span style="
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 10px;
-        background: ${isConcluido ? '#10b981' : '#f59e0b'};
-        color: white;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 500;
-      ">
-        <span style="font-size: 12px;">${isConcluido ? '✅' : '⏳'}</span>
-        ${poste.status || "Em andamento"}
-      </span>
-    `;
-  };
+      const getStatusBadge = () => {
+        const isConcluido = status === "concluído";
+        return `
+          <span style="
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: ${isConcluido ? '#10b981' : '#f59e0b'};
+            color: white;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+          ">
+            <span style="font-size: 12px;">${isConcluido ? '✅' : '⏳'}</span>
+            ${poste.status || "Em andamento"}
+          </span>
+        `;
+      };
 
-  // Função para criar linhas de informação
-  const infoRow = (label, value, icon = '•') => `
-    <div style="
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      font-size: 12px;
-      padding: 4px 0;
-      border-bottom: 1px solid #f0f0f0;
-    ">
-      <span style="color: #64748b; min-width: 70px;">${icon} ${label}:</span>
-      <span style="color: #1e293b; font-weight: 500; word-break: break-word;">${value || '-'}</span>
-    </div>
-  `;
+      const infoRow = (label, value, icon = '•') => `
+        <div style="
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          font-size: 12px;
+          padding: 4px 0;
+          border-bottom: 1px solid #f0f0f0;
+        ">
+          <span style="color: #64748b; min-width: 70px;">${icon} ${label}:</span>
+          <span style="color: #1e293b; font-weight: 500; word-break: break-word;">${value || '-'}</span>
+        </div>
+      `;
 
-  // Função para criar seções
-  const section = (title, icon, content) => `
-    <div style="margin-bottom: 12px;">
-      <div style="
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        color: #475569;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      ">
-        <span style="font-size: 14px;">${icon}</span>
-        ${title}
-      </div>
-      <div style="margin-left: 4px;">
-        ${content}
-      </div>
-    </div>
-  `;
-
-  // Miniaturas de fotos
-  const fotos = [poste.foto1, poste.foto2, poste.foto3].filter(f => f);
-  const fotosHTML = fotos.length > 0 ? `
-    <div style="margin-top: 12px;">
-      <div style="
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        color: #475569;
-        font-size: 11px;
-        font-weight: 600;
-      ">
-        <span>📸</span> FOTOS (${fotos.length})
-      </div>
-      <div style="
-        display: grid;
-        grid-template-columns: repeat(${Math.min(fotos.length, 3)}, 1fr);
-        gap: 6px;
-        margin-bottom: 8px;
-      ">
-        ${fotos.map((foto, i) => `
+      const section = (title, icon, content) => `
+        <div style="margin-bottom: 12px;">
           <div style="
-            position: relative;
-            cursor: pointer;
-            border-radius: 6px;
-            overflow: hidden;
-            aspect-ratio: 1;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          " onclick="window.open('${foto}', '_blank')">
-            <img src="${foto}" style="
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-              display: block;
-            ">
-            <span style="
-              position: absolute;
-              bottom: 2px;
-              right: 2px;
-              background: rgba(0,0,0,0.6);
-              color: white;
-              font-size: 9px;
-              padding: 2px 5px;
-              border-radius: 10px;
-            ">${i + 1}</span>
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          ">
+            <span style="font-size: 14px;">${icon}</span>
+            ${title}
           </div>
-        `).join('')}
-      </div>
-      ${fotos.length > 1 ? `
-        <button onclick="abrirTodasFotos('${poste.foto1 || ''}', '${poste.foto2 || ''}', '${poste.foto3 || ''}')" style="
+          <div style="margin-left: 4px;">
+            ${content}
+          </div>
+        </div>
+      `;
+
+      const streetViewButton = `
+        <button onclick="ativarStreetView(${poste.latitude}, ${poste.longitude})" style="
           width: 100%;
-          padding: 6px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          margin-top: 8px;
+          padding: 8px;
+          background: #4285f4;
+          border: none;
           border-radius: 6px;
-          color: #475569;
-          font-size: 11px;
+          color: white;
+          font-size: 12px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
           transition: all 0.2s;
-        " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
-          <span>🔍</span> Ver todas
+        " onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
+          <span>👁️</span> Ver no Street View
         </button>
-      ` : ''}
-    </div>
-  ` : `
-    <div style="
-      margin-top: 12px;
-      padding: 8px;
-      background: #f8fafc;
-      border-radius: 6px;
-      text-align: center;
-      color: #94a3b8;
-      font-size: 11px;
-    ">
-      📷 Sem fotos
-    </div>
-  `;
+      `;
 
-  // HTML principal
-  return `
-    <div style="
-      padding: 0;
-      max-width: 300px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    ">
-      <!-- Header com gradiente simplificado -->
-      <div style="
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        color: white;
-        padding: 16px;
-      ">
-        <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">
-          📁 ${poste.idProjeto || "Sem projeto"}
-        </div>
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          opacity: 0.9;
-        ">
-          <span>🔖 ${poste.codigoPoste || "Sem código"}</span>
-          <span>📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "-"}</span>
-        </div>
-      </div>
-
-      <!-- Corpo -->
-      <div style="padding: 16px;">
-        
-        <!-- Status e Tempo em linha -->
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        ">
-          ${getStatusBadge()}
-          <span style="
+      const fotos = [poste.foto1, poste.foto2, poste.foto3].filter(f => f);
+      const fotosHTML = fotos.length > 0 ? `
+        <div style="margin-top: 12px;">
+          <div style="
             display: flex;
             align-items: center;
-            gap: 4px;
-            color: #64748b;
-            font-size: 11px;
-          ">
-            <span>⏱️</span> ${tempo}
-          </span>
-        </div>
-
-        <!-- Poste Primário -->
-        ${section('POSTE PRIMÁRIO', '🏗️', `
-          ${infoRow('Poste', poste.postePrimario)}
-          ${infoRow('Estrutura', poste.estruturaPrimaria)}
-        `)}
-
-        <!-- Poste Secundário (se existir) -->
-        ${(poste.posteSecundario || poste.estruturaSecundaria) ? section('POSTE SECUNDÁRIO', '🏗️', `
-          ${infoRow('Poste', poste.posteSecundario)}
-          ${infoRow('Estrutura', poste.estruturaSecundaria)}
-        `) : ''}
-
-        <!-- Serviços -->
-        ${section('SERVIÇOS', '⚡', `
-          ${infoRow('Linha Viva', poste.linhaViva ? formatarValor(poste.linhaViva) : 'Não informado', '⚡')}
-          ${infoRow('Podas', poste.servicosPodas ? formatarValor(poste.servicosPodas) : 'Não informado', '🌿')}
-        `)}
-
-        <!-- Observações (se houver) -->
-        ${poste.observacoes ? section('OBSERVAÇÕES', '📝', `
-          <div style="
-            font-size: 11px;
+            gap: 6px;
+            margin-bottom: 8px;
             color: #475569;
-            background: #f8fafc;
-            padding: 8px;
-            border-radius: 6px;
-            max-height: 60px;
-            overflow-y: auto;
-            line-height: 1.4;
+            font-size: 11px;
+            font-weight: 600;
           ">
-            ${poste.observacoes}
+            <span>📸</span> FOTOS (${fotos.length})
           </div>
-        `) : ''}
-
-        <!-- Localização -->
-        ${section('LOCALIZAÇÃO', '📍', `
-          ${infoRow('Município', muni)}
           <div style="
-            display: flex;
-            gap: 8px;
-            margin-top: 4px;
+            display: grid;
+            grid-template-columns: repeat(${Math.min(fotos.length, 3)}, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
           ">
-            <span style="
-              font-size: 10px;
-              color: #64748b;
-              background: #f1f5f9;
-              padding: 2px 6px;
-              border-radius: 4px;
-            ">Lat: ${poste.latitude || '-'}</span>
-            <span style="
-              font-size: 10px;
-              color: #64748b;
-              background: #f1f5f9;
-              padding: 2px 6px;
-              border-radius: 4px;
-            ">Lng: ${poste.longitude || '-'}</span>
+            ${fotos.map((foto, i) => `
+              <div style="
+                position: relative;
+                cursor: pointer;
+                border-radius: 6px;
+                overflow: hidden;
+                aspect-ratio: 1;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              " onclick="window.open('${foto}', '_blank')">
+                <img src="${foto}" style="
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  display: block;
+                ">
+                <span style="
+                  position: absolute;
+                  bottom: 2px;
+                  right: 2px;
+                  background: rgba(0,0,0,0.6);
+                  color: white;
+                  font-size: 9px;
+                  padding: 2px 5px;
+                  border-radius: 10px;
+                ">${i + 1}</span>
+              </div>
+            `).join('')}
           </div>
-        `)}
-
-        <!-- Responsável -->
+          ${fotos.length > 1 ? `
+            <button onclick="abrirTodasFotos('${poste.foto1 || ''}', '${poste.foto2 || ''}', '${poste.foto3 || ''}')" style="
+              width: 100%;
+              padding: 6px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              color: #475569;
+              font-size: 11px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+              <span>🔍</span> Ver todas
+            </button>
+          ` : ''}
+        </div>
+      ` : `
         <div style="
-          margin-top: 8px;
+          margin-top: 12px;
           padding: 8px;
           background: #f8fafc;
           border-radius: 6px;
+          text-align: center;
+          color: #94a3b8;
           font-size: 11px;
-          color: #475569;
-          display: flex;
-          align-items: center;
-          gap: 6px;
         ">
-          <span>👤</span>
-          ${poste.usuario || "Usuário não identificado"}
+          📷 Sem fotos
         </div>
+      `;
 
-        <!-- Fotos -->
-        ${fotosHTML}
-      </div>
-    </div>
-  `;
-}
-
-// ========== FUNÇÃO SIMPLIFICADA PARA ABRIR FOTOS ==========
-
-function abrirTodasFotos(foto1, foto2, foto3) {
-  const fotos = [foto1, foto2, foto3].filter(f => f);
-  if (fotos.length === 0) return;
-  
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Fotos do Poste</title>
-      <style>
-        * {
-          margin: 0;
+      return `
+        <div style="
           padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
+          max-width: 300px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          background: #f1f5f9;
-          padding: 20px;
-        }
-        
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-        
-        h1 {
-          font-size: 24px;
-          color: #1e293b;
-          margin-bottom: 20px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 20px;
-        }
-        
-        .card {
           background: white;
           border-radius: 12px;
           overflow: hidden;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-          transition: transform 0.2s, box-shadow 0.2s;
-          cursor: pointer;
-        }
-        
-        .card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 20px rgba(0,0,0,0.1);
-        }
-        
-        .card img {
-          width: 100%;
-          height: 250px;
-          object-fit: cover;
-          display: block;
-        }
-        
-        .card-footer {
-          padding: 12px;
-          background: white;
-          border-top: 1px solid #e2e8f0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        
-        .numero {
-          font-size: 13px;
-          color: #475569;
-          font-weight: 500;
-        }
-        
-        .abrir {
-          background: #3b82f6;
-          color: white;
-          border: none;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        
-        .abrir:hover {
-          background: #2563eb;
-        }
-        
-        @media (max-width: 640px) {
-          .grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>
-          <span>📸</span> 
-          Fotos do Poste (${fotos.length})
-        </h1>
-        
-        <div class="grid">
-          ${fotos.map((foto, index) => `
-            <div class="card" onclick="window.open('${foto}', '_blank')">
-              <img src="${foto}" alt="Foto ${index + 1}" loading="lazy">
-              <div class="card-footer">
-                <span class="numero">Foto ${index + 1}</span>
-                <button class="abrir" onclick="event.stopPropagation(); window.open('${foto}', '_blank')">
-                  Abrir
-                </button>
-              </div>
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        ">
+          <!-- Header -->
+          <div style="
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            padding: 16px;
+          ">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">
+              📁 ${poste.idProjeto || "Sem projeto"}
             </div>
-          `).join('')}
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  const janela = window.open('', '_blank');
-  if (janela) {
-    janela.document.write(html);
-    janela.document.close();
-  } else {
-    alert('Permita pop-ups para ver as fotos.');
-  }
-}
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              opacity: 0.9;
+            ">
+              <span>🔖 ${poste.codigoPoste || "Sem código"}</span>
+              <span>📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "-"}</span>
+            </div>
+          </div>
 
-    async function buscarMunicipioAsync(id, lat, lng) {
+          <!-- Corpo -->
+          <div style="padding: 16px;">
+            
+            <!-- Status e Tempo -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 16px;
+            ">
+              ${getStatusBadge()}
+              <span style="
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                color: #64748b;
+                font-size: 11px;
+              ">
+                <span>⏱️</span> ${tempo}
+              </span>
+            </div>
+
+            <!-- Poste Primário -->
+            ${section('POSTE PRIMÁRIO', '🏗️', `
+              ${infoRow('Poste', poste.postePrimario)}
+              ${infoRow('Estrutura', poste.estruturaPrimaria)}
+            `)}
+
+            <!-- Poste Secundário -->
+            ${(poste.posteSecundario || poste.estruturaSecundaria) ? section('POSTE SECUNDÁRIO', '🏗️', `
+              ${infoRow('Poste', poste.posteSecundario)}
+              ${infoRow('Estrutura', poste.estruturaSecundaria)}
+            `) : ''}
+
+            <!-- Serviços -->
+            ${section('SERVIÇOS', '⚡', `
+              ${infoRow('Linha Viva', poste.linhaViva ? formatarValor(poste.linhaViva) : 'Não informado', '⚡')}
+              ${infoRow('Podas', poste.servicosPodas ? formatarValor(poste.servicosPodas) : 'Não informado', '🌿')}
+            `)}
+
+            <!-- Observações -->
+            ${poste.observacoes ? section('OBSERVAÇÕES', '📝', `
+              <div style="
+                font-size: 11px;
+                color: #475569;
+                background: #f8fafc;
+                padding: 8px;
+                border-radius: 6px;
+                max-height: 60px;
+                overflow-y: auto;
+                line-height: 1.4;
+              ">
+                ${poste.observacoes}
+              </div>
+            `) : ''}
+
+            <!-- Localização -->
+            ${section('LOCALIZAÇÃO', '📍', `
+              ${infoRow('Município', muni)}
+              <div style="
+                display: flex;
+                gap: 8px;
+                margin-top: 4px;
+                flex-wrap: wrap;
+              ">
+                <span style="
+                  font-size: 10px;
+                  color: #64748b;
+                  background: #f1f5f9;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                ">Lat: ${poste.latitude || '-'}</span>
+                <span style="
+                  font-size: 10px;
+                  color: #64748b;
+                  background: #f1f5f9;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                ">Lng: ${poste.longitude || '-'}</span>
+              </div>
+              ${streetViewButton}
+            `)}
+
+            <!-- Responsável -->
+            <div style="
+              margin-top: 8px;
+              padding: 8px;
+              background: #f8fafc;
+              border-radius: 6px;
+              font-size: 11px;
+              color: #475569;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            ">
+              <span>👤</span>
+              ${poste.usuario || "Usuário não identificado"}
+            </div>
+
+            <!-- Fotos -->
+            ${fotosHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    // ========== FUNÇÃO PARA ABRIR FOTOS ==========
+    function abrirTodasFotos(foto1, foto2, foto3) {
+      const fotos = [foto1, foto2, foto3].filter(f => f);
+      if (fotos.length === 0) return;
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Fotos do Poste</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: #f1f5f9;
+              padding: 20px;
+            }
+            
+            .container {
+              max-width: 1200px;
+              margin: 0 auto;
+            }
+            
+            h1 {
+              font-size: 24px;
+              color: #1e293b;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+              gap: 20px;
+            }
+            
+            .card {
+              background: white;
+              border-radius: 12px;
+              overflow: hidden;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+              transition: transform 0.2s, box-shadow 0.2s;
+              cursor: pointer;
+            }
+            
+            .card:hover {
+              transform: translateY(-4px);
+              box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+            }
+            
+            .card img {
+              width: 100%;
+              height: 250px;
+              object-fit: cover;
+              display: block;
+            }
+            
+            .card-footer {
+              padding: 12px;
+              background: white;
+              border-top: 1px solid #e2e8f0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .numero {
+              font-size: 13px;
+              color: #475569;
+              font-weight: 500;
+            }
+            
+            .abrir {
+              background: #3b82f6;
+              color: white;
+              border: none;
+              padding: 4px 12px;
+              border-radius: 20px;
+              font-size: 12px;
+              cursor: pointer;
+              transition: background 0.2s;
+            }
+            
+            .abrir:hover {
+              background: #2563eb;
+            }
+            
+            @media (max-width: 640px) {
+              .grid {
+                grid-template-columns: 1fr;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>
+              <span>📸</span> 
+              Fotos do Poste (${fotos.length})
+            </h1>
+            
+            <div class="grid">
+              ${fotos.map((foto, index) => `
+                <div class="card" onclick="window.open('${foto}', '_blank')">
+                  <img src="${foto}" alt="Foto ${index + 1}" loading="lazy">
+                  <div class="card-footer">
+                    <span class="numero">Foto ${index + 1}</span>
+                    <button class="abrir" onclick="event.stopPropagation(); window.open('${foto}', '_blank')">
+                      Abrir
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      const janela = window.open('', '_blank');
+      if (janela) {
+        janela.document.write(html);
+        janela.document.close();
+      } else {
+        alert('Permita pop-ups para ver as fotos.');
+      }
+    }
+
+    // ========== STREET VIEW ==========
+    function ativarStreetView(lat, lng) {
+      if (!map) return;
+      
+      const panorama = map.getStreetView();
+      panorama.setPosition({ lat, lng });
+      panorama.setPov({
+        heading: 0,
+        pitch: 0,
+        zoom: 1
+      });
+      panorama.setVisible(true);
+      
+      mostrarAvisoMapa("Clique e arraste para navegar no Street View", 3000);
+    }
+
+    // ========== GEOCODING EM FILA ==========
+    function adicionarGeocodingFila(id, lat, lng) {
       if (cachedMunicipalities.has(id)) return;
+      geocodingQueue.push({ id, lat, lng });
+    }
+
+    async function processGeocodingQueue() {
+      if (geocodingInProgress || geocodingQueue.length === 0 || !geocoder) return;
+      
+      geocodingInProgress = true;
+      const item = geocodingQueue.shift();
       
       try {
-        const result = await geocoder.geocode({ location: { lat, lng } });
+        const result = await geocoder.geocode({ location: { lat: item.lat, lng: item.lng } });
+        
         if (result.results && result.results.length > 0) {
           for (const res of result.results) {
             const comp = res.address_components.find(c =>
@@ -1235,12 +1557,12 @@ function abrirTodasFotos(foto1, foto2, foto3) {
               c.types.includes("locality")
             );
             if (comp) {
-              cachedMunicipalities.set(id, comp.long_name);
-              if (infoWindows.has(id)) {
-                const infoWindow = infoWindows.get(id);
-                if (infoWindow.getMap()) {
-                  const markerData = markers.get(id);
-                  infoWindow.setContent(criarConteudoInfoWindow(markerData.data));
+              cachedMunicipalities.set(item.id, comp.long_name);
+              
+              if (infoWindows.has(item.id)) {
+                const markerData = markers.get(item.id);
+                if (markerData && markerData.infoWindow.getMap()) {
+                  markerData.infoWindow.setContent(criarConteudoInfoWindow(markerData.data));
                 }
               }
               break;
@@ -1248,8 +1570,131 @@ function abrirTodasFotos(foto1, foto2, foto3) {
           }
         }
       } catch (error) {
-        cachedMunicipalities.set(id, "Não disponível");
+        cachedMunicipalities.set(item.id, "Não disponível");
+      } finally {
+        geocodingInProgress = false;
+        
+        if (geocodingQueue.length > 0) {
+          setTimeout(processGeocodingQueue, MAP_CONFIG.GEOCODING_DELAY);
+        }
       }
+    }
+
+    // ========== AVISO NO MAPA ==========
+    function mostrarAvisoMapa(mensagem, duracao = 5000) {
+      const mapElement = document.getElementById('map');
+      if (!mapElement) return;
+      
+      const avisoExistente = document.getElementById('mapa-aviso');
+      if (avisoExistente) avisoExistente.remove();
+      
+      const aviso = document.createElement('div');
+      aviso.id = 'mapa-aviso';
+      aviso.style.cssText = `
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255,255,255,0.1);
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        text-align: center;
+        line-height: 1.4;
+      `;
+      
+      if (!document.getElementById('mapa-animation-style')) {
+        const style = document.createElement('style');
+        style.id = 'mapa-animation-style';
+        style.textContent = `
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      aviso.textContent = mensagem;
+      mapElement.style.position = 'relative';
+      mapElement.appendChild(aviso);
+      
+      setTimeout(() => {
+        if (aviso.parentNode) {
+          aviso.style.animation = 'slideIn 0.3s ease-out reverse';
+          setTimeout(() => aviso.remove(), 280);
+        }
+      }, duracao);
+    }
+
+    // ========== RECENTRAR MAPA ==========
+    function recentrarMapa() {
+      if (!map || listaVisivel.length === 0) return;
+      
+      const bounds = new google.maps.LatLngBounds();
+      let hasValidCoords = false;
+      
+      listaVisivel.forEach(p => {
+        const lat = parseFloat(p.latitude);
+        const lng = parseFloat(p.longitude);
+        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+          bounds.extend({ lat, lng });
+          hasValidCoords = true;
+        }
+      });
+      
+      if (hasValidCoords) {
+        map.fitBounds(bounds, { 
+          padding: { top: 50, right: 50, bottom: 50, left: 50 },
+          duration: MAP_CONFIG.ANIMATION_DURATION
+        });
+        mostrarAvisoMapa("Mapa recentralizado", 1500);
+      } else {
+        mostrarAvisoMapa("Não há coordenadas válidas para recentralizar", 2000);
+      }
+    }
+
+    // ========== ALTERNAR VISUALIZAÇÃO DO MAPA ==========
+    function alternarVisualizacaoMapa() {
+      if (!map) return;
+      
+      const currentType = map.getMapTypeId();
+      const newType = currentType === google.maps.MapTypeId.ROADMAP 
+        ? google.maps.MapTypeId.SATELLITE 
+        : google.maps.MapTypeId.ROADMAP;
+      
+      map.setMapTypeId(newType);
+      const button = event.currentTarget;
+      button.innerHTML = newType === google.maps.MapTypeId.ROADMAP 
+        ? '<span>🛰️</span> Satélite' 
+        : '<span>🗺️</span> Mapa';
+      mostrarAvisoMapa(`Modo: ${newType === google.maps.MapTypeId.ROADMAP ? 'Mapa' : 'Satélite'}`, 1500);
+    }
+
+    // ========== DEBOUNCE UTILITY ==========
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
     }
 
     // ========== FUNÇÕES DE AUTENTICAÇÃO ==========
@@ -1293,7 +1738,6 @@ function abrirTodasFotos(foto1, foto2, foto3) {
       }
     }
 
-    // Verificar autenticação ao carregar
     auth.onAuthStateChanged((user) => {
       if (user) {
         userEmail = user.email;
@@ -1349,26 +1793,22 @@ function abrirTodasFotos(foto1, foto2, foto3) {
     // ========== FILTRAR POSTES ==========
     function filtrarPostes() {
       const filtroProjeto = normalizarTexto(document.getElementById("filtroProjeto")?.value);
-      const filtroPoste   = normalizarTexto(document.getElementById("filtroPoste")?.value);
+      const filtroPoste = normalizarTexto(document.getElementById("filtroPoste")?.value);
       const filtroUsuario = normalizarTexto(document.getElementById("usuario")?.value);
-      const filtroStatus  = normalizarTexto(document.getElementById("filtroStatus")?.value);
-      const dataInicial   = document.getElementById("dataInicial").value;
-      const dataFinal     = document.getElementById("dataFinal").value;
+      const filtroStatus = normalizarTexto(document.getElementById("filtroStatus")?.value);
+      const dataInicial = document.getElementById("dataInicial").value;
+      const dataFinal = document.getElementById("dataFinal").value;
 
-      // filtrar
       listaFiltrada = todosOsPostes.filter(p => {
         const data = p._dataConvertida;
-        const okProjeto = !filtroProjeto ||
-                          normalizarTexto(p.idProjeto).includes(filtroProjeto);
-        const okPoste   = !filtroPoste ||
-                          normalizarTexto(p.codigoPoste).includes(filtroPoste);
-        const okUsuario = !filtroUsuario ||
-                          normalizarTexto(p.usuario).includes(filtroUsuario);
+        const okProjeto = !filtroProjeto || normalizarTexto(p.idProjeto).includes(filtroProjeto);
+        const okPoste = !filtroPoste || normalizarTexto(p.codigoPoste).includes(filtroPoste);
+        const okUsuario = !filtroUsuario || normalizarTexto(p.usuario).includes(filtroUsuario);
         const statusNorm = normalizarTexto(p.status);
         const okStatus = !filtroStatus ||
-        (filtroStatus === "em andamento"
-        ? (statusNorm === "" || statusNorm === "em andamento")
-        : statusNorm === filtroStatus);
+          (filtroStatus === "em andamento"
+            ? (statusNorm === "" || statusNorm === "em andamento")
+            : statusNorm === filtroStatus);
 
         let okData = true;
         if (dataInicial) {
@@ -1382,7 +1822,6 @@ function abrirTodasFotos(foto1, foto2, foto3) {
         return okProjeto && okPoste && okUsuario && okStatus && okData;
       });
 
-      // Aplicar filtros especiais
       if (mostrandoSomentePodas) {
         listaFiltrada = listaFiltrada.filter(p => {
           const podas = (p.servicosPodas || "").trim().toLowerCase();
@@ -1394,13 +1833,12 @@ function abrirTodasFotos(foto1, foto2, foto3) {
       if (mostrandoSomenteLinhaViva) {
         listaFiltrada = listaFiltrada.filter(p => {
           const lv = (p.linhaViva || "").trim().toLowerCase();
-          const st = (p.status   || "").trim().toLowerCase();
+          const st = (p.status || "").trim().toLowerCase();
           const invalido = !lv || lv === "selecione os serviços" || lv === "não recebido";
           return !invalido && st !== "concluído";
         });
       }
 
-      // calcular tempo decorrido
       listaFiltrada.forEach(p => {
         if ((p.status || "").toLowerCase() === "em andamento") {
           p.tempoDecorrido = calcularTempoDecorrido(p.dataLancamento || "");
@@ -1409,20 +1847,17 @@ function abrirTodasFotos(foto1, foto2, foto3) {
         }
       });
 
-      // ordenar
       listaFiltrada.sort((a, b) => (b._dataConvertida || 0) - (a._dataConvertida || 0));
 
-      // paginar
       const totalPaginas = Math.ceil(listaFiltrada.length / itensPorPagina);
       const inicio = (paginaAtual - 1) * itensPorPagina;
-      const fim    = inicio + itensPorPagina;
+      const fim = inicio + itensPorPagina;
       listaVisivel = listaFiltrada.slice(inicio, fim);
 
       exibirPostes(listaVisivel);
       mostrarMapaOtimizado(listaVisivel);
       atualizarPaginacao(totalPaginas);
       atualizarContadorStatus();
-      atualizarContadorRegistros();
     }
 
     // ========== ATUALIZAR PAGINAÇÃO ==========
@@ -1434,14 +1869,12 @@ function abrirTodasFotos(foto1, foto2, foto3) {
         return;
       }
 
-      // Informação da página
       const spanStatus = document.createElement("span");
       spanStatus.textContent = `Página ${paginaAtual} de ${totalPaginas}`;
       spanStatus.style.margin = "0 10px";
       spanStatus.style.fontWeight = "bold";
       pagDiv.appendChild(spanStatus);
       
-      // Botão Anterior
       const btnAnterior = document.createElement("button");
       btnAnterior.textContent = "« Anterior";
       btnAnterior.disabled = paginaAtual === 1;
@@ -1451,7 +1884,6 @@ function abrirTodasFotos(foto1, foto2, foto3) {
       };
       pagDiv.appendChild(btnAnterior);
       
-      // Botão Próxima
       const btnProxima = document.createElement("button");
       btnProxima.textContent = "Próxima »";
       btnProxima.disabled = paginaAtual === totalPaginas;
@@ -1506,17 +1938,16 @@ function abrirTodasFotos(foto1, foto2, foto3) {
     function atualizarContadorStatus() {
       const lista = todosOsPostes;
 
-      const totalProj   = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
+      const totalProj = new Set(lista.map(p => (p.idProjeto || "").trim()).filter(x => x !== "")).size;
       const totalPostes = lista.length;
-      const concluidos  = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
-      const andamento   = lista.filter(p => {
+      const concluidos = lista.filter(p => normalizarTexto(p.status) === "concluído").length;
+      const andamento = lista.filter(p => {
         const s = normalizarTexto(p.status);
         return s === "" || s === "em andamento";
       }).length;
 
       const regexValor = /r\$ ?[\d.,]+/i;
 
-      // --- CORREÇÃO: ADICIONADO .length ---
       const comPodas = lista.filter(p => {
         const txt = (p.servicosPodas || "").toLowerCase().replace(/\n/g, " ");
         return regexValor.test(txt);
@@ -1538,13 +1969,12 @@ function abrirTodasFotos(foto1, foto2, foto3) {
         const status = normalizarTexto(p.status);
         return regexValor.test(txt) && status !== "concluído";
       }).length;
-      // ------------------------------------
 
       const totalPodas = somarValor("servicosPodas", "status", lista);
       const totalLV = somarValor("linhaViva", "status", lista);
 
       const totalPodasf = totalPodas > 0 ? totalPodas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
-      const totalLVf    = totalLV > 0 ? totalLV.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
+      const totalLVf = totalLV > 0 ? totalLV.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null;
 
       const agora = new Date();
       const horaAtual = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1556,15 +1986,11 @@ function abrirTodasFotos(foto1, foto2, foto3) {
         `⚡ ${comLV} com linha viva | ⏳ ${lvPend} linha viva pendente`;
 
       if (totalPodasf) msg += ` | 💰 Total Podas: ${totalPodasf}`;
-      if (totalLVf)    msg += ` | 💰 Total LV: ${totalLVf}`;
+      if (totalLVf) msg += ` | 💰 Total LV: ${totalLVf}`;
 
       msg += ` | 🕒 Atualizado em: ${dataAtual} às ${horaAtual}`;
 
       document.getElementById("contadorStatus").innerText = msg;
-    }
-    
-    function atualizarContadorRegistros() {
-      // Função placeholder caso precise exibir contador na UI
     }
 
     function somarValor(labelField, statusField, lista) {
@@ -1620,7 +2046,7 @@ function abrirTodasFotos(foto1, foto2, foto3) {
           const td = el.closest("td");
           if (!td) return;
           const colIndex = Array.from(tr.children).indexOf(td);
-          const bloqueadas = [0, 10, 11, 12]; // Data, Lat, Lng, Usuário
+          const bloqueadas = [0, 10, 11, 12];
           if (!bloqueadas.includes(colIndex)) {
             el.disabled = false;
           }
@@ -1633,39 +2059,38 @@ function abrirTodasFotos(foto1, foto2, foto3) {
       btnSalvar.disabled = true;
       btnSalvar.innerHTML = '<span class="loading"></span> Salvando...';
 
-      const id            = tr.dataset.id;
-      const idProj        = tr.children[1].querySelector("input").value.trim() || "";
-      const codPoste      = tr.children[2].querySelector("input").value.trim() || "";
+      const id = tr.dataset.id;
+      const idProj = tr.children[1].querySelector("input").value.trim() || "";
+      const codPoste = tr.children[2].querySelector("input").value.trim() || "";
       const postePrimario = tr.children[3].querySelector("input").value.trim() || "";
-      const estrPrimaria  = tr.children[4].querySelector("input").value.trim() || "";
-      const posteSec      = tr.children[5].querySelector("input").value.trim() || "";
-      const estrSecund    = tr.children[6].querySelector("input").value.trim() || "";
-      const linhaViva     = tr.children[7].querySelector("textarea").value.trim() || "";
-      const servPodas     = tr.children[8].querySelector("textarea").value.trim() || "";
-      const obs           = tr.children[9].querySelector("textarea").value.trim() || "";
-      const lat           = tr.children[10].querySelector("input").value.trim() || "";
-      const lng           = tr.children[11].querySelector("input").value.trim() || "";
-      const usuario       = tr.children[12].querySelector("input").value.trim() || "";
-      const status        = tr.children[13].querySelector(".status-badge").textContent.trim();
+      const estrPrimaria = tr.children[4].querySelector("input").value.trim() || "";
+      const posteSec = tr.children[5].querySelector("input").value.trim() || "";
+      const estrSecund = tr.children[6].querySelector("input").value.trim() || "";
+      const linhaViva = tr.children[7].querySelector("textarea").value.trim() || "";
+      const servPodas = tr.children[8].querySelector("textarea").value.trim() || "";
+      const obs = tr.children[9].querySelector("textarea").value.trim() || "";
+      const lat = tr.children[10].querySelector("input").value.trim() || "";
+      const lng = tr.children[11].querySelector("input").value.trim() || "";
+      const usuario = tr.children[12].querySelector("input").value.trim() || "";
+      const status = tr.children[13].querySelector(".status-badge").textContent.trim();
 
       try {
         await db.ref(`postes/${id}`).update({
-          idProjeto:      idProj,
-          codigoPoste:    codPoste,
+          idProjeto: idProj,
+          codigoPoste: codPoste,
           postePrimario,
-          estruturaPrimaria:   estrPrimaria,
-          posteSecundario:     posteSec,
+          estruturaPrimaria: estrPrimaria,
+          posteSecundario: posteSec,
           estruturaSecundaria: estrSecund,
           linhaViva,
           servicosPodas: servPodas,
-          observacoes:   obs,
-          latitude:      lat,
-          longitude:     lng,
+          observacoes: obs,
+          latitude: lat,
+          longitude: lng,
           usuario,
           status
         });
         
-        // Feedback visual
         btnSalvar.textContent = "✓ Salvo!";
         setTimeout(() => {
           btnSalvar.textContent = "✏️ Editar";
@@ -1747,11 +2172,505 @@ function abrirTodasFotos(foto1, foto2, foto3) {
       }
     }
 
+    // ========== TORNAR FUNÇÕES GLOBAIS ==========
+    window.ativarStreetView = ativarStreetView;
+    window.recentrarMapa = recentrarMapa;
+    window.alternarVisualizacaoMapa = alternarVisualizacaoMapa;
+    window.abrirTodasFotos = abrirTodasFotos;
+
+    // ========== FUNÇÃO PARA SALVAR PDF COM CTRL+P ==========
+    function configurarAtalhoPDF() {
+      document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'p') {
+          e.preventDefault();
+          gerarPDFPersonalizado();
+        }
+      });
+    }
+
+    // ========== GERAR PDF PERSONALIZADO ==========
+    async function gerarPDFPersonalizado() {
+      try {
+        const loadingMsg = mostrarLoadingPDF();
+        
+        const dados = prepararDadosParaPDF();
+        
+        await gerarPDFComIcones(dados);
+        
+        removerLoadingPDF(loadingMsg);
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        alert('❌ Erro ao gerar PDF. Tente novamente.');
+        removerLoadingPDF();
+      }
+    }
+
+    // ========== MOSTRAR LOADING ==========
+    function mostrarLoadingPDF() {
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = 'pdf-loading';
+      loadingDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+      `;
+      
+      loadingDiv.innerHTML = `
+        <div style="
+          background: white;
+          padding: 30px 40px;
+          border-radius: 16px;
+          text-align: center;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+          animation: slideUp 0.3s ease-out;
+        ">
+          <div style="
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+          "></div>
+          <h3 style="margin: 0 0 10px; color: #333;">Gerando PDF</h3>
+          <p style="margin: 0; color: #666; font-size: 14px;">
+            Preparando relatório dos postes...
+          </p>
+          <div style="
+            margin-top: 20px;
+            height: 4px;
+            width: 200px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            overflow: hidden;
+          ">
+            <div style="
+              height: 100%;
+              width: 30%;
+              background: linear-gradient(90deg, #667eea, #764ba2);
+              border-radius: 2px;
+              animation: loading 1.5s ease-in-out infinite;
+            "></div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(loadingDiv);
+      
+      if (!document.getElementById('pdf-animations')) {
+        const style = document.createElement('style');
+        style.id = 'pdf-animations';
+        style.textContent = `
+          @keyframes slideUp {
+            from {
+              transform: translateY(50px);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(300%); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      return loadingDiv;
+    }
+
+    function removerLoadingPDF(loadingDiv) {
+      const loading = loadingDiv || document.getElementById('pdf-loading');
+      if (loading) {
+        loading.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => loading.remove(), 280);
+      }
+    }
+
+    // ========== PREPARAR DADOS PARA PDF ==========
+    function prepararDadosParaPDF() {
+      const dados = listaFiltrada.length > 0 ? listaFiltrada : todosOsPostes;
+      
+      const stats = {
+        total: dados.length,
+        concluidos: dados.filter(p => normalizarTexto(p.status) === 'concluído').length,
+        andamento: dados.filter(p => {
+          const s = normalizarTexto(p.status);
+          return s === '' || s === 'em andamento';
+        }).length,
+        comPodas: dados.filter(p => {
+          const txt = (p.servicosPodas || '').toLowerCase();
+          return /r\$ ?[\d.,]+/i.test(txt);
+        }).length,
+        comLV: dados.filter(p => {
+          const txt = (p.linhaViva || '').toLowerCase();
+          return /r\$ ?[\d.,]+/i.test(txt);
+        }).length,
+        projetos: new Set(dados.map(p => p.idProjeto).filter(Boolean)).size,
+        totalPodas: somarValor('servicosPodas', 'status', dados),
+        totalLV: somarValor('linhaViva', 'status', dados)
+      };
+      
+      const agora = new Date();
+      const dataGeracao = agora.toLocaleDateString('pt-BR');
+      const horaGeracao = agora.toLocaleTimeString('pt-BR');
+      
+      return {
+        dados: dados.slice(0, 500),
+        stats,
+        dataGeracao,
+        horaGeracao,
+        filtros: obterFiltrosAtuais()
+      };
+    }
+
+    // ========== OBTER FILTROS ATUAIS ==========
+    function obterFiltrosAtuais() {
+      const filtros = [];
+      
+      const projeto = document.getElementById('filtroProjeto')?.value;
+      if (projeto) filtros.push(`📁 Projeto: ${projeto}`);
+      
+      const poste = document.getElementById('filtroPoste')?.value;
+      if (poste) filtros.push(`🔖 Poste: ${poste}`);
+      
+      const usuario = document.getElementById('usuario')?.value;
+      if (usuario) filtros.push(`👤 Usuário: ${usuario}`);
+      
+      const status = document.getElementById('filtroStatus')?.value;
+      if (status) filtros.push(`📊 Status: ${status}`);
+      
+      const dataInicial = document.getElementById('dataInicial')?.value;
+      if (dataInicial) {
+        const dataFinal = document.getElementById('dataFinal')?.value;
+        filtros.push(`📅 Período: ${dataInicial} ${dataFinal ? `a ${dataFinal}` : 'em diante'}`);
+      }
+      
+      return filtros.length > 0 ? filtros : ['📋 Sem filtros aplicados'];
+    }
+
+   // ========== GERAR PDF COM TODOS OS ÍCONES (CORRIGIDO) ==========
+async function gerarPDFComIcones(dados) {
+  const { jsPDF } = window.jspdf;
   
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+  
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  let yPos = margin;
+  
+  // ===== CABEÇALHO =====
+  doc.setFillColor(102, 126, 234);
+  doc.rect(0, 0, pageWidth, 25, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Atbuilt - Sistema de Gestão de Postes', pageWidth / 2, 15, { align: 'center' });
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Gerado em: ${dados.dataGeracao} às ${dados.horaGeracao}`, pageWidth - margin, 20, { align: 'right' });
+  
+  yPos = 35;
+  
+  // ===== ESTATÍSTICAS GERAIS =====
+  doc.setTextColor(51, 51, 51);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTATÍSTICAS GERAIS', margin, yPos);
+  yPos += 8;
+  
+  const stats = [
+    { label: 'Total de Postes', value: dados.stats.total },
+    { label: 'Projetos', value: dados.stats.projetos },
+    { label: 'Concluídos', value: dados.stats.concluidos },
+    { label: 'Em Andamento', value: dados.stats.andamento },
+    { label: 'Com Podas', value: dados.stats.comPodas },
+    { label: 'Com Linha Viva', value: dados.stats.comLV }
+  ];
+  
+  const cardWidth = (pageWidth - (2 * margin) - 20) / 3;
+  
+  stats.forEach((stat, index) => {
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const x = margin + (col * (cardWidth + 10));
+    const y = yPos + (row * 25);
+    
+    doc.setFillColor(248, 249, 250);
+    doc.roundedRect(x, y, cardWidth, 20, 3, 3, 'F');
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(stat.label, x + 5, y + 8);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 51, 51);
+    doc.text(stat.value.toString(), x + 5, y + 16);
+  });
+  
+  yPos += 55;
+  
+  // ===== VALORES TOTAIS =====
+  if (dados.stats.totalPodas > 0 || dados.stats.totalLV > 0) {
+    doc.setFillColor(240, 244, 248);
+    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 15, 3, 3, 'F');
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 51, 51);
+    
+    let textoValores = '';
+    if (dados.stats.totalPodas > 0) {
+      textoValores += `Total Podas: ${dados.stats.totalPodas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+    }
+    if (dados.stats.totalLV > 0) {
+      if (textoValores) textoValores += ' | ';
+      textoValores += `Total Linha Viva: ${dados.stats.totalLV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+    }
+    
+    doc.text(textoValores, pageWidth / 2, yPos + 10, { align: 'center' });
+    yPos += 25;
+  } else {
+    yPos += 10;
+  }
+  
+  // ===== FILTROS APLICADOS =====
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 126, 234);
+  doc.text('FILTROS APLICADOS:', margin, yPos);
+  yPos += 5;
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(dados.filtros.join(' • '), margin, yPos);
+  yPos += 10;
+  
+  // ===== TABELA DE POSTES =====
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 51, 51);
+  doc.text('LISTA DE POSTES', margin, yPos);
+  yPos += 8;
+  
+  // Cabeçalho da tabela - textos simples sem caracteres especiais
+  const colunas = [
+    { label: 'Data', width: 18 },
+    { label: 'Projeto', width: 15 },
+    { label: 'PG', width: 15 },
+    { label: 'Poste Prim.', width: 20 },
+    { label: 'Estr.Prim', width: 15 },
+    { label: 'Poste Sec.', width: 20 },
+    { label: 'Estr.Sec', width: 15 },
+    { label: 'Linha Viva', width: 18 },
+    { label: 'Podas', width: 15 },
+    { label: 'Obs', width: 20 },
+    { label: 'Local', width: 18 },
+    { label: 'Usuario', width: 18 },
+    { label: 'Status', width: 15 },
+    { label: 'Tempo', width: 12 }
+  ];
+  
+  let xPos = margin;
+  
+  // Fundo do cabeçalho
+  doc.setFillColor(102, 126, 234);
+  doc.rect(margin, yPos - 3, pageWidth - (2 * margin), 8, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  
+  colunas.forEach(col => {
+    doc.text(col.label, xPos + 1, yPos + 2);
+    xPos += col.width;
+  });
+  
+  yPos += 8;
+  
+  // Linhas da tabela
+  doc.setTextColor(51, 51, 51);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  
+  dados.dados.forEach((poste, index) => {
+    // Verificar se precisa de nova página
+    if (yPos > pageHeight - margin - 10) {
+      doc.addPage();
+      yPos = margin + 10;
+      
+      // Recriar cabeçalho na nova página
+      doc.setFillColor(102, 126, 234);
+      doc.rect(margin, yPos - 3, pageWidth - (2 * margin), 8, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'bold');
+      
+      xPos = margin;
+      colunas.forEach(col => {
+        doc.text(col.label, xPos + 1, yPos + 2);
+        xPos += col.width;
+      });
+      
+      doc.setTextColor(51, 51, 51);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      
+      yPos += 8;
+    }
+    
+    // Alternar cor de fundo das linhas
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 249, 250);
+      doc.rect(margin, yPos - 2, pageWidth - (2 * margin), 4.5, 'F');
+    }
+    
+    xPos = margin;
+    
+    // Data
+    const data = poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : '-';
+    doc.text(data, xPos + 1, yPos);
+    xPos += colunas[0].width;
+    
+    // Projeto
+    doc.text((poste.idProjeto || '-').substring(0, 8), xPos + 1, yPos);
+    xPos += colunas[1].width;
+    
+    // PG
+    doc.text((poste.codigoPoste || '-').substring(0, 8), xPos + 1, yPos);
+    xPos += colunas[2].width;
+    
+    // Poste Primário
+    doc.text((poste.postePrimario || '-').substring(0, 10), xPos + 1, yPos);
+    xPos += colunas[3].width;
+    
+    // Estrutura Primária
+    doc.text((poste.estruturaPrimaria || '-').substring(0, 8), xPos + 1, yPos);
+    xPos += colunas[4].width;
+    
+    // Poste Secundário
+    doc.text((poste.posteSecundario || '-').substring(0, 10), xPos + 1, yPos);
+    xPos += colunas[5].width;
+    
+    // Estrutura Secundária
+    doc.text((poste.estruturaSecundaria || '-').substring(0, 8), xPos + 1, yPos);
+    xPos += colunas[6].width;
+    
+    // Linha Viva - mostrar se tem valor
+    const lv = (poste.linhaViva || '-');
+    const lvDisplay = lv.includes('R$') ? lv.substring(0, 10) : (lv.length > 8 ? lv.substring(0, 8)+'...' : lv);
+    doc.text(lvDisplay, xPos + 1, yPos);
+    xPos += colunas[7].width;
+    
+    // Podas - mostrar se tem valor
+    const podas = (poste.servicosPodas || '-');
+    const podasDisplay = podas.includes('R$') ? podas.substring(0, 10) : (podas.length > 8 ? podas.substring(0, 8)+'...' : podas);
+    doc.text(podasDisplay, xPos + 1, yPos);
+    xPos += colunas[8].width;
+    
+    // Observações
+    doc.text((poste.observacoes || '-').substring(0, 10), xPos + 1, yPos);
+    xPos += colunas[9].width;
+    
+    // Localização (latitude/longitude)
+    const lat = poste.latitude ? poste.latitude.substring(0, 6) : '-';
+    const lng = poste.longitude ? poste.longitude.substring(0, 6) : '-';
+    doc.text(`${lat},${lng}`, xPos + 1, yPos);
+    xPos += colunas[10].width;
+    
+    // Usuário
+    doc.text((poste.usuario || '-').substring(0, 10), xPos + 1, yPos);
+    xPos += colunas[11].width;
+    
+    // Status com cor
+    const status = poste.status || 'Em andamento';
+    const statusColor = normalizarTexto(status) === 'concluído' ? [76, 175, 80] : [255, 152, 0];
+    doc.setTextColor(...statusColor);
+    doc.text(status.substring(0, 8), xPos + 1, yPos);
+    doc.setTextColor(51, 51, 51);
+    xPos += colunas[12].width;
+    
+    // Tempo
+    const tempo = poste.tempoDecorrido ? `${poste.tempoDecorrido.dias}d` : '-';
+    doc.text(tempo, xPos + 1, yPos);
+    
+    yPos += 4.5;
+  });
+  
+  // ===== RODAPÉ =====
+  const totalPaginas = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPaginas; i++) {
+    doc.setPage(i);
+    
+    // Linha separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, pageHeight - 8, pageWidth - margin, pageHeight - 8);
+    
+    // Número da página
+    doc.setFontSize(6);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${i} de ${totalPaginas} • Total de registros: ${dados.dados.length}`,
+      pageWidth / 2,
+      pageHeight - 4,
+      { align: 'center' }
+    );
+    
+    // Logo texto
+    doc.setFontSize(6);
+    doc.setTextColor(102, 126, 234);
+    doc.text('Atbuilt - Sistema Inteligente de Gestão', margin, pageHeight - 4);
+  }
+  
+  // ===== SALVAR PDF =====
+  const nomeArquivo = `relatorio_postes_${dados.dataGeracao.replace(/\//g, '-')}.pdf`;
+  doc.save(nomeArquivo);
+}
+
+    // ========== FUNÇÃO PARA BAIXAR PDF MANUALMENTE ==========
+    function baixarPDFModelo() {
+      gerarPDFPersonalizado();
+    }
+
+    // ========== INICIALIZAR ATALHO CTRL+P ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      configurarAtalhoPDF();
+    });
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        configurarAtalhoPDF();
+      }
+    });
   </script>
 </body>
 </html>
-
 
 
 
