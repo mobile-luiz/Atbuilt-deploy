@@ -793,43 +793,435 @@
       }
     }
 
-    function criarConteudoInfoWindow(poste) {
-      const status = normalizarTexto(poste.status);
-      const muni = cachedMunicipalities.get(poste.id) || "Carregando...";
-      const tempo = poste.tempoDecorrido ? 
-        `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
-      
-      return `
-        <div style="padding: 12px; max-width: 280px; font-family: 'Segoe UI', sans-serif;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; border-radius: 8px 8px 0 0; margin: -12px -12px 12px -12px;">
-            <div style="font-size: 16px; font-weight: 600;">📁 ${poste.idProjeto || "Sem projeto"}</div>
-            <div style="font-size: 13px; opacity: 0.9;">🔖 ${poste.codigoPoste || "Sem código"}</div>
+// ========== FUNÇÃO PARA INFO WINDOW MODERNA E SIMPLES ==========
+
+function criarConteudoInfoWindow(poste) {
+  const status = normalizarTexto(poste.status);
+  const muni = cachedMunicipalities.get(poste.id) || "Carregando...";
+  const tempo = poste.tempoDecorrido ? 
+    `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
+  
+  // Formatar valores monetários se existirem
+  const formatarValor = (texto) => {
+    if (!texto) return "-";
+    const match = texto.match(/r\$ ?[\d.,]+/i);
+    return match ? match[0].toUpperCase() : texto;
+  };
+
+  // Função para criar badges de status
+  const getStatusBadge = () => {
+    const isConcluido = status === "concluído";
+    return `
+      <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: ${isConcluido ? '#10b981' : '#f59e0b'};
+        color: white;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+      ">
+        <span style="font-size: 12px;">${isConcluido ? '✅' : '⏳'}</span>
+        ${poste.status || "Em andamento"}
+      </span>
+    `;
+  };
+
+  // Função para criar linhas de informação
+  const infoRow = (label, value, icon = '•') => `
+    <div style="
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    ">
+      <span style="color: #64748b; min-width: 70px;">${icon} ${label}:</span>
+      <span style="color: #1e293b; font-weight: 500; word-break: break-word;">${value || '-'}</span>
+    </div>
+  `;
+
+  // Função para criar seções
+  const section = (title, icon, content) => `
+    <div style="margin-bottom: 12px;">
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      ">
+        <span style="font-size: 14px;">${icon}</span>
+        ${title}
+      </div>
+      <div style="margin-left: 4px;">
+        ${content}
+      </div>
+    </div>
+  `;
+
+  // Miniaturas de fotos
+  const fotos = [poste.foto1, poste.foto2, poste.foto3].filter(f => f);
+  const fotosHTML = fotos.length > 0 ? `
+    <div style="margin-top: 12px;">
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+      ">
+        <span>📸</span> FOTOS (${fotos.length})
+      </div>
+      <div style="
+        display: grid;
+        grid-template-columns: repeat(${Math.min(fotos.length, 3)}, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+      ">
+        ${fotos.map((foto, i) => `
+          <div style="
+            position: relative;
+            cursor: pointer;
+            border-radius: 6px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          " onclick="window.open('${foto}', '_blank')">
+            <img src="${foto}" style="
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              display: block;
+            ">
+            <span style="
+              position: absolute;
+              bottom: 2px;
+              right: 2px;
+              background: rgba(0,0,0,0.6);
+              color: white;
+              font-size: 9px;
+              padding: 2px 5px;
+              border-radius: 10px;
+            ">${i + 1}</span>
           </div>
-          <div style="font-size: 13px; line-height: 1.6;">
-            <div><strong>📅 Data:</strong> ${poste.dataLancamento || "-"}</div>
-            <div><strong>🏗️ Estrutura:</strong> ${poste.estruturaPrimaria || "-"}</div>
-            <div><strong>⚡ Linha Viva:</strong> ${poste.linhaViva ? "Sim" : "Não"}</div>
-            <div><strong>🌿 Podas:</strong> ${poste.servicosPodas ? "Sim" : "Não"}</div>
-            <div><strong>🟢 Status:</strong> 
-              <span style="color: ${status === "concluído" ? "#4CAF50" : "#FF9800"}; font-weight: bold;">
-                ${poste.status || "Em andamento"}
-              </span>
-            </div>
-            <div><strong>⏱️ Tempo:</strong> ${tempo}</div>
-            <div><strong>🗺️ Município:</strong> ${muni}</div>
-            <div><strong>👤 Usuário:</strong> ${poste.usuario || "-"}</div>
-          </div>
-          ${(poste.foto1 || poste.foto2 || poste.foto3) ? `
-            <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px;">
-              <button onclick="window.open('', '_blank').document.write('<html><body style=\\'padding:20px;text-align:center;\\'><img src=\\'${poste.foto1 || ''}\\' style=\\'max-width:90%;border-radius:8px;margin:10px\\'><br><img src=\\'${poste.foto2 || ''}\\' style=\\'max-width:90%;border-radius:8px;margin:10px\\'><br><img src=\\'${poste.foto3 || ''}\\' style=\\'max-width:90%;border-radius:8px;margin:10px\\'></body></html>')" 
-                style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 12px; font-weight: 600;">
-                🔍 Ver Fotos
-              </button>
-            </div>
-          ` : ""}
+        `).join('')}
+      </div>
+      ${fotos.length > 1 ? `
+        <button onclick="abrirTodasFotos('${poste.foto1 || ''}', '${poste.foto2 || ''}', '${poste.foto3 || ''}')" style="
+          width: 100%;
+          padding: 6px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          color: #475569;
+          font-size: 11px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          transition: all 0.2s;
+        " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+          <span>🔍</span> Ver todas
+        </button>
+      ` : ''}
+    </div>
+  ` : `
+    <div style="
+      margin-top: 12px;
+      padding: 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 11px;
+    ">
+      📷 Sem fotos
+    </div>
+  `;
+
+  // HTML principal
+  return `
+    <div style="
+      padding: 0;
+      max-width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    ">
+      <!-- Header com gradiente simplificado -->
+      <div style="
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        color: white;
+        padding: 16px;
+      ">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">
+          📁 ${poste.idProjeto || "Sem projeto"}
         </div>
-      `;
-    }
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          opacity: 0.9;
+        ">
+          <span>🔖 ${poste.codigoPoste || "Sem código"}</span>
+          <span>📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "-"}</span>
+        </div>
+      </div>
+
+      <!-- Corpo -->
+      <div style="padding: 16px;">
+        
+        <!-- Status e Tempo em linha -->
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        ">
+          ${getStatusBadge()}
+          <span style="
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #64748b;
+            font-size: 11px;
+          ">
+            <span>⏱️</span> ${tempo}
+          </span>
+        </div>
+
+        <!-- Poste Primário -->
+        ${section('POSTE PRIMÁRIO', '🏗️', `
+          ${infoRow('Poste', poste.postePrimario)}
+          ${infoRow('Estrutura', poste.estruturaPrimaria)}
+        `)}
+
+        <!-- Poste Secundário (se existir) -->
+        ${(poste.posteSecundario || poste.estruturaSecundaria) ? section('POSTE SECUNDÁRIO', '🏗️', `
+          ${infoRow('Poste', poste.posteSecundario)}
+          ${infoRow('Estrutura', poste.estruturaSecundaria)}
+        `) : ''}
+
+        <!-- Serviços -->
+        ${section('SERVIÇOS', '⚡', `
+          ${infoRow('Linha Viva', poste.linhaViva ? formatarValor(poste.linhaViva) : 'Não informado', '⚡')}
+          ${infoRow('Podas', poste.servicosPodas ? formatarValor(poste.servicosPodas) : 'Não informado', '🌿')}
+        `)}
+
+        <!-- Observações (se houver) -->
+        ${poste.observacoes ? section('OBSERVAÇÕES', '📝', `
+          <div style="
+            font-size: 11px;
+            color: #475569;
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 6px;
+            max-height: 60px;
+            overflow-y: auto;
+            line-height: 1.4;
+          ">
+            ${poste.observacoes}
+          </div>
+        `) : ''}
+
+        <!-- Localização -->
+        ${section('LOCALIZAÇÃO', '📍', `
+          ${infoRow('Município', muni)}
+          <div style="
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+          ">
+            <span style="
+              font-size: 10px;
+              color: #64748b;
+              background: #f1f5f9;
+              padding: 2px 6px;
+              border-radius: 4px;
+            ">Lat: ${poste.latitude || '-'}</span>
+            <span style="
+              font-size: 10px;
+              color: #64748b;
+              background: #f1f5f9;
+              padding: 2px 6px;
+              border-radius: 4px;
+            ">Lng: ${poste.longitude || '-'}</span>
+          </div>
+        `)}
+
+        <!-- Responsável -->
+        <div style="
+          margin-top: 8px;
+          padding: 8px;
+          background: #f8fafc;
+          border-radius: 6px;
+          font-size: 11px;
+          color: #475569;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        ">
+          <span>👤</span>
+          ${poste.usuario || "Usuário não identificado"}
+        </div>
+
+        <!-- Fotos -->
+        ${fotosHTML}
+      </div>
+    </div>
+  `;
+}
+
+// ========== FUNÇÃO SIMPLIFICADA PARA ABRIR FOTOS ==========
+
+function abrirTodasFotos(foto1, foto2, foto3) {
+  const fotos = [foto1, foto2, foto3].filter(f => f);
+  if (fotos.length === 0) return;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Fotos do Poste</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #f1f5f9;
+          padding: 20px;
+        }
+        
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        
+        h1 {
+          font-size: 24px;
+          color: #1e293b;
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+        }
+        
+        .card {
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+          transition: transform 0.2s, box-shadow 0.2s;
+          cursor: pointer;
+        }
+        
+        .card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+        
+        .card img {
+          width: 100%;
+          height: 250px;
+          object-fit: cover;
+          display: block;
+        }
+        
+        .card-footer {
+          padding: 12px;
+          background: white;
+          border-top: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .numero {
+          font-size: 13px;
+          color: #475569;
+          font-weight: 500;
+        }
+        
+        .abrir {
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        
+        .abrir:hover {
+          background: #2563eb;
+        }
+        
+        @media (max-width: 640px) {
+          .grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>
+          <span>📸</span> 
+          Fotos do Poste (${fotos.length})
+        </h1>
+        
+        <div class="grid">
+          ${fotos.map((foto, index) => `
+            <div class="card" onclick="window.open('${foto}', '_blank')">
+              <img src="${foto}" alt="Foto ${index + 1}" loading="lazy">
+              <div class="card-footer">
+                <span class="numero">Foto ${index + 1}</span>
+                <button class="abrir" onclick="event.stopPropagation(); window.open('${foto}', '_blank')">
+                  Abrir
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const janela = window.open('', '_blank');
+  if (janela) {
+    janela.document.write(html);
+    janela.document.close();
+  } else {
+    alert('Permita pop-ups para ver as fotos.');
+  }
+}
 
     async function buscarMunicipioAsync(id, lat, lng) {
       if (cachedMunicipalities.has(id)) return;
@@ -1355,112 +1747,15 @@
       }
     }
 
-    async function verificarDuplicados() {
-      const mapa = new Map();
-      const duplicados = [];
-
-      // Identificar duplicados
-      todosOsPostes.forEach(poste => {
-        const chave = `${normalizarTexto(poste.idProjeto)}|${normalizarTexto(poste.codigoPoste)}`;
-        if (mapa.has(chave)) {
-          duplicados.push(poste);
-        } else {
-          mapa.set(chave, poste.id);
-        }
-      });
-
-      if (duplicados.length === 0) {
-        alert("✅ Nenhum registro duplicado encontrado.");
-        return;
-      }
-
-      // Destacar duplicados
-      document.querySelectorAll("#tabelaPostes tbody tr").forEach(tr => {
-        tr.style.backgroundColor = "";
-      });
-
-      duplicados.forEach(poste => {
-        const tr = document.querySelector(`tr[data-id="${poste.id}"]`);
-        if (tr) {
-          tr.style.backgroundColor = "rgba(255, 152, 0, 0.1)";
-        }
-      });
-
-      const confirmar = confirm(
-        `Foram encontrados ${duplicados.length} registros duplicados.\n\n` +
-        'Deseja excluir automaticamente os registros mais antigos?'
-      );
-
-      if (!confirmar) return;
-
-      // Excluir duplicados
-      for (const poste of duplicados) {
-        try {
-          await db.ref(`postes/${poste.id}`).remove();
-        } catch (error) {
-          console.error("Erro ao excluir duplicado:", error);
-        }
-      }
-
-      alert(`✅ ${duplicados.length} registros duplicados foram removidos.`);
-      carregarPostes();
-    }
-
-    // ========== EXPORTAÇÃO CSV ==========
-    function exportarCSV(tudo) {
-      const dados = tudo ? listaFiltrada : listaVisivel;
-      
-      if (dados.length === 0) {
-        alert("Nenhum dado para exportar.");
-        return;
-      }
-      
-      // Cabeçalhos
-      const cabecalhos = [
-        'Data', 'ID Projeto', 'PG', 'Poste Primário', 'Estrutura Primária',
-        'Poste Secundário', 'Estrutura Secundária', 'Linha Viva', 'Serviços Podas',
-        'Observações', 'Latitude', 'Longitude', 'Usuário', 'Status', 'Tempo Decorrido'
-      ];
-      
-      // Linhas
-      const linhas = dados.map(poste => {
-        const tempo = poste.tempoDecorrido ? 
-          `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "";
-        
-        return [
-          `"${poste.dataLancamento || ''}"`,
-          `"${poste.idProjeto || ''}"`,
-          `"${poste.codigoPoste || ''}"`,
-          `"${poste.postePrimario || ''}"`,
-          `"${poste.estruturaPrimaria || ''}"`,
-          `"${poste.posteSecundario || ''}"`,
-          `"${poste.estruturaSecundaria || ''}"`,
-          `"${poste.linhaViva || ''}"`,
-          `"${poste.servicosPodas || ''}"`,
-          `"${poste.observacoes || ''}"`,
-          `"${poste.latitude || ''}"`,
-          `"${poste.longitude || ''}"`,
-          `"${poste.usuario || ''}"`,
-          `"${poste.status || ''}"`,
-          `"${tempo}"`
-        ].join(',');
-      });
-      
-      // Criar CSV
-      const conteudo = [cabecalhos.join(','), ...linhas].join('\n');
-      const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `postes_${tudo ? 'completo' : 'pagina_${paginaAtual}'}_${new Date().toISOString().slice(0,10)}.csv`;
-      link.click();
-    }
   
-    function baixarPDFModelo() {
-      alert("Funcionalidade de PDF em desenvolvimento. Use a exportação CSV por enquanto.");
-    }
   </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
