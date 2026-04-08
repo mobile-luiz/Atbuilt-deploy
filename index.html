@@ -21,6 +21,34 @@
   <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
 
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=inicializarMapa" async defer></script>
+  
+  <style>
+    /* Estilos adicionais para garantir que o mapa ocupe todo espaço */
+    .mapa-painel-wrapper {
+      width: 100%;
+      height: 500px;
+      position: relative;
+      margin-top: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .mapa-container {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .painel-lateral {
+      display: none !important;
+    }
+    
+    @media (max-width: 768px) {
+      .mapa-painel-wrapper {
+        height: 400px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="loginContainer" class="login-container">
@@ -87,10 +115,7 @@
     </div>
 
     <div class="acoes">
-      <button onclick="baixarPDFModelo()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
-        📄 Gerar PDF (Ctrl+P)
-      </button>
-    
+      <button onclick="baixarPDFModelo()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);"> 📄 Gerar PDF (Ctrl+P) </button>
       <button class="warning" id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
     </div>
 
@@ -159,29 +184,9 @@
       </div>
     </div>
 
-    <!-- Container do Mapa + Painel Lateral - VERSÃO MOBILE OTIMIZADA -->
+    <!-- Container do Mapa - Painel lateral removido -->
     <div class="mapa-painel-wrapper">
       <div id="map" class="mapa-container"></div>
-      
-      <div class="painel-lateral">
-        <div class="painel-header">
-          <h3>📋 Postes no Mapa</h3>
-          <div class="painel-filtro">
-            <input type="text" id="filtroListaPostes" placeholder="🔍 Filtrar por código, projeto ou usuário..." oninput="filtrarListaPostes()">
-          </div>
-        </div>
-        
-        <div id="listaPostesContainer" class="lista-postes-container">
-          <div class="loading-lista">Carregando postes...</div>
-        </div>
-        
-        <div id="detalhesPosteContainer" class="detalhes-poste-container">
-          <div class="detalhes-header">
-            <button class="btn-voltar" onclick="fecharDetalhes()">← Voltar para lista</button>
-          </div>
-          <div id="detalhesConteudo" class="detalhes-conteudo"></div>
-        </div>
-      </div>
     </div>
 
     <div id="powerbiContainer" class="powerbi-container">
