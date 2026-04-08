@@ -19,22 +19,117 @@ let markersData = [];
 let mapaInicializado = false;
 let mostrandoSomentePodas = false;
 let filtroLista = "";
-let posteSelecionadoId = null;
+let infoWindow = null;
 
 // ========== REMOVER DUPLICADOS ==========
 function removerPostesDuplicados(listaDePostes) {
   const registrosUnicos = new Map();
-
   listaDePostes.forEach(poste => {
     const chaveUnica = `${poste.dataLancamento}_${poste.lat}_${poste.lng}`;
     registrosUnicos.set(chaveUnica, poste);
   });
-
   return Array.from(registrosUnicos.values());
 }
 
-// ========== INICIALIZAR MAPA COM ZOOM POR SCROLL ==========
-// ========== INICIALIZAR MAPA COM SUPORTE MOBILE ==========
+// ========== CRIAR INFOWINDOW ==========
+function criarInfoWindow(poste) {
+  const status = (poste.status || "em andamento").toLowerCase();
+  const isConcluido = status === "concluído";
+  const tempo = poste.tempoDecorrido ? `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
+  
+  const fotos = [poste.foto1, poste.foto2, poste.foto3].filter(f => f);
+  
+  const fotosHTML = fotos.length > 0 ? `
+    <div style="margin-top: 16px;">
+      <div style="font-weight: 600; margin-bottom: 12px; color: #667eea;">📸 Fotos do Poste (${fotos.length})</div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        ${fotos.slice(0, 3).map(foto => `
+          <div style="flex: 1; min-width: 80px; cursor: pointer; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" onclick="window.open('${foto}','_blank')">
+            <img src="${foto}" style="width: 100%; height: 100px; object-fit: cover;">
+          </div>
+        `).join('')}
+      </div>
+      ${fotos.length > 0 ? `
+        <button onclick="window.abrirTodasFotos('${poste.foto1 || ''}', '${poste.foto2 || ''}', '${poste.foto3 || ''}')" style="width: 100%; margin-top: 12px; padding: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: transform 0.2s;">
+          🔍 Ver todas as fotos
+        </button>
+      ` : ''}
+    </div>
+  ` : '<div style="margin-top: 16px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center; color: #999;">📷 Nenhuma foto disponível</div>';
+  
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; width: 380px; max-width: 100%; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.15);">
+      
+      <!-- Cabeçalho -->
+      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px;">
+        <div style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">📁 ${poste.idProjeto || "B-1094801"}</div>
+        <div style="font-size: 12px; opacity: 0.9;">🔖 ${poste.codigoPoste || "existentes"} | 📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "06/03/2026"}</div>
+      </div>
+      
+      <!-- Status e Tempo -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0;">
+        <span style="padding: 4px 12px; border-radius: 20px; background: ${isConcluido ? '#4caf5020' : '#ff980020'}; color: ${isConcluido ? '#4caf50' : '#ff9800'}; font-size: 12px; font-weight: 600;">${poste.status || "Em andamento"}</span>
+        <span style="font-size: 12px; color: #666;">⏱️ Tempo: ${tempo}</span>
+      </div>
+      
+      <!-- POSTE PRIMÁRIO -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #667eea; font-size: 13px;">🏗️ POSTE PRIMÁRIO</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+          <div><strong>Poste:</strong> ${poste.postePrimario || "Selecione"}</div>
+          <div><strong>Estrutura:</strong> ${poste.estruturaPrimaria || "Selecione"}</div>
+        </div>
+      </div>
+      
+      <!-- POSTE SECUNDÁRIO -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #667eea; font-size: 13px;">🏗️ POSTE SECUNDÁRIO</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+          <div><strong>Poste:</strong> ${poste.posteSecundario || "Selecione"}</div>
+          <div><strong>Estrutura:</strong> ${poste.estruturaSecundaria || "-"}</div>
+        </div>
+      </div>
+      
+      <!-- SERVIÇOS -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #667eea; font-size: 13px;">⚡ SERVIÇOS</div>
+        <div style="margin-bottom: 8px; font-size: 13px;"><strong>Linha Viva:</strong> ${poste.linhaViva || "Selecione os serviços"}</div>
+        <div style="font-size: 13px;"><strong>Serviços de Podas:</strong> ${poste.servicosPodas || "Selecionar serviços de podas"}</div>
+      </div>
+      
+      <!-- OBSERVAÇÕES -->
+      ${poste.observacoes ? `
+        <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-weight: 600; margin-bottom: 10px; color: #667eea; font-size: 13px;">📝 OBSERVAÇÕES</div>
+          <div style="font-size: 12px; color: #555; line-height: 1.5; background: #f8f9fa; padding: 10px; border-radius: 8px;">${poste.observacoes}</div>
+        </div>
+      ` : ''}
+      
+      <!-- LOCALIZAÇÃO -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #667eea; font-size: 13px;">📍 LOCALIZAÇÃO</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; font-size: 13px;">
+          <div><strong>Latitude:</strong> ${poste.latitude || "-"}</div>
+          <div><strong>Longitude:</strong> ${poste.longitude || "-"}</div>
+        </div>
+        <button onclick="window.ativarStreetView(${poste.latitude || 0}, ${poste.longitude || 0})" style="width: 100%; padding: 8px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.2s;">
+          👁️ Ver no Street View
+        </button>
+      </div>
+      
+      <!-- USUÁRIO -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-size: 13px;"><strong>👤 Usuário responsável:</strong> ${poste.usuario || "visitante@visitante.com"}</div>
+      </div>
+      
+      <!-- FOTOS -->
+      ${fotosHTML}
+      
+    </div>
+  `;
+}
+
+// ========== INICIALIZAR MAPA ==========
 function inicializarMapa() {
   if (mapaInicializado) return;
   
@@ -44,7 +139,6 @@ function inicializarMapa() {
     return;
   }
 
-  // Garantir que o container tenha altura antes de inicializar
   if (mapElement.clientHeight === 0) {
     mapElement.style.minHeight = "400px";
     mapElement.style.height = "400px";
@@ -58,7 +152,7 @@ function inicializarMapa() {
       zoomControlOptions: {
         position: google.maps.ControlPosition.RIGHT_CENTER
       },
-      gestureHandling: "greedy", // Melhor para mobile
+      gestureHandling: "greedy",
       mapTypeControl: false,
       streetViewControl: true,
       streetViewControlOptions: {
@@ -70,16 +164,18 @@ function inicializarMapa() {
       },
       scrollwheel: true,
       disableDoubleClickZoom: false,
-      touchGesture: "cooperative", // Melhor para mobile
-      draggable: true,
-      draggableCursor: "grab",
-      draggingCursor: "grabbing"
+      touchGesture: "cooperative",
+      draggable: true
     });
     
     mapaInicializado = true;
     console.log("Mapa inicializado com sucesso");
     
-    // Forçar redimensionamento do mapa após carregar
+    infoWindow = new google.maps.InfoWindow({
+      maxWidth: 420,
+      pixelOffset: new google.maps.Size(0, -10)
+    });
+    
     setTimeout(() => {
       if (map) {
         google.maps.event.trigger(map, 'resize');
@@ -99,7 +195,6 @@ function inicializarMapa() {
   }
 }
 
-// Função para forçar redimensionamento do mapa (útil para mobile)
 function forcarRedimensionamentoMapa() {
   if (map && mapaInicializado) {
     setTimeout(() => {
@@ -122,20 +217,18 @@ function forcarRedimensionamentoMapa() {
   }
 }
 
-// Adicionar evento de redimensionamento para mobile
-window.addEventListener('resize', function() {
-  forcarRedimensionamentoMapa();
-});
-
-window.addEventListener('orientationchange', function() {
-  setTimeout(forcarRedimensionamentoMapa, 100);
-});
+window.addEventListener('resize', () => forcarRedimensionamentoMapa());
+window.addEventListener('orientationchange', () => setTimeout(forcarRedimensionamentoMapa, 100));
 
 // ========== CRIAR MARCADORES ==========
 function criarMarker(poste) {
   const lat = parseFloat(poste.latitude);
   const lng = parseFloat(poste.longitude);
   if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
+
+  if (normalizarTexto(poste.status) === "em andamento") {
+    poste.tempoDecorrido = calcularTempoDecorrido(poste.dataLancamento || "");
+  }
 
   const marker = new google.maps.Marker({
     position: { lat, lng },
@@ -146,13 +239,17 @@ function criarMarker(poste) {
       scaledSize: new google.maps.Size(40, 40),
       anchor: new google.maps.Point(20, 40),
     },
+    animation: google.maps.Animation.DROP
   });
 
   marker.addListener("click", () => {
-    selecionarPosteNaLista(poste.id);
+    const contentString = criarInfoWindow(poste);
+    infoWindow.setContent(contentString);
+    infoWindow.open(map, marker);
   });
 
   marker.addListener("dblclick", () => {
+    infoWindow.close();
     ativarStreetView(lat, lng);
   });
 
@@ -182,218 +279,153 @@ function atualizarVisibilidadeMarcadores(idsVisiveis) {
 // ========== STREET VIEW ==========
 function ativarStreetView(lat, lng) {
   if (!map) return;
+  if (infoWindow) infoWindow.close();
   const panorama = map.getStreetView();
   panorama.setPosition({ lat, lng });
   panorama.setPov({ heading: 0, pitch: 0, zoom: 1 });
   panorama.setVisible(true);
 }
 
-// ========== PAINEL LATERAL ==========
-function atualizarListaPostes() {
-  const container = document.getElementById("listaPostesContainer");
-  if (!container) return;
-  
-  let postes = listaVisivel;
-  if (filtroLista) {
-    const termo = filtroLista.toLowerCase();
-    postes = postes.filter(p => 
-      (p.codigoPoste && p.codigoPoste.toLowerCase().includes(termo)) ||
-      (p.idProjeto && p.idProjeto.toLowerCase().includes(termo)) ||
-      (p.usuario && p.usuario.toLowerCase().includes(termo))
-    );
-  }
-  
-  if (postes.length === 0) {
-    container.innerHTML = '<div class="lista-vazia">📍 Nenhum poste encontrado</div>';
+// ========== FUNÇÃO PARA ABRIR TODAS FOTOS ==========
+function abrirTodasFotos(foto1, foto2, foto3) {
+  const fotos = [foto1, foto2, foto3].filter(f => f && f.trim() !== "");
+  if (!fotos.length) {
+    alert("Nenhuma foto disponível para este poste.");
     return;
   }
   
-  container.innerHTML = postes.map(poste => {
-    const statusNorm = (poste.status || "em andamento").toLowerCase();
-    const statusClass = statusNorm === "concluído" ? "status-lista-concluido" : "status-lista-andamento";
-    const statusText = poste.status || "Em andamento";
-    const isSelecionado = posteSelecionadoId === poste.id;
-    
-    return `
-      <div class="item-poste-lista ${isSelecionado ? 'selecionado' : ''}" onclick="selecionarPosteNaLista('${poste.id}')">
-        <div class="item-poste-titulo">
-          <span class="item-poste-codigo">🔖 ${poste.codigoPoste || "Sem código"}</span>
-          <span class="item-poste-projeto">📁 ${poste.idProjeto || "Sem projeto"}</span>
-        </div>
-        <div class="item-poste-info">
-          <span>📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "-"}</span>
-          <span class="item-poste-status ${statusClass}">${statusText}</span>
-          <span>👤 ${poste.usuario ? poste.usuario.split('@')[0] : "-"}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function filtrarListaPostes() {
-  const input = document.getElementById("filtroListaPostes");
-  filtroLista = input ? input.value : "";
-  atualizarListaPostes();
-}
-
-function selecionarPosteNaLista(posteId) {
-  const poste = todosOsPostes.find(p => p.id === posteId);
-  if (!poste) return;
-  
-  posteSelecionadoId = posteId;
-  atualizarListaPostes();
-  
-  const listaContainer = document.getElementById("listaPostesContainer");
-  const detalhesContainer = document.getElementById("detalhesPosteContainer");
-  const detalhesConteudo = document.getElementById("detalhesConteudo");
-  
-  listaContainer.style.display = "none";
-  detalhesContainer.style.display = "block";
-  detalhesConteudo.innerHTML = criarConteudoDetalhesCompleto(poste);
-  
-  const markerInfo = markersData.find(m => m.id === posteId);
-  if (markerInfo && map) {
-    map.setCenter(markerInfo.marker.getPosition());
-    map.setZoom(18);
-  }
-}
-
-function criarConteudoDetalhesCompleto(poste) {
-  const status = (poste.status || "em andamento").toLowerCase();
-  const tempo = poste.tempoDecorrido ? `${poste.tempoDecorrido.dias}d ${poste.tempoDecorrido.horas}h` : "-";
-  const isConcluido = status === "concluído";
-  
-  const fotos = [poste.foto1, poste.foto2, poste.foto3].filter(f => f);
-  const fotosHTML = fotos.length > 0 ? `
-    <div style="margin-top:16px">
-      <div style="font-weight:600;margin-bottom:12px">📸 Fotos do Poste (${fotos.length})</div>
-      <div style="display:grid;grid-template-columns:repeat(${Math.min(fotos.length,2)},1fr);gap:10px">
-        ${fotos.map(foto => `
-          <div style="cursor:pointer;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)" onclick="window.open('${foto}','_blank')">
-            <img src="${foto}" style="width:100%;height:150px;object-fit:cover">
-          </div>
-        `).join('')}
-      </div>
-      ${fotos.length > 2 ? `<button onclick="abrirTodasFotos('${poste.foto1 || ''}', '${poste.foto2 || ''}', '${poste.foto3 || ''}')" style="width:100%;margin-top:12px;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer">🔍 Ver todas as fotos</button>` : ''}
-    </div>
-  ` : '<div style="margin-top:16px;padding:20px;background:#f8f9fa;border-radius:8px;text-align:center;color:#999">📷 Nenhuma foto disponível</div>';
-  
-  return `
-    <div style="font-family:Segoe UI,sans-serif">
-      <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px;border-radius:12px;margin-bottom:16px">
-        <div style="font-size:18px;font-weight:600">📁 ${poste.idProjeto || "Sem projeto"}</div>
-        <div style="font-size:12px;margin-top:5px">🔖 ${poste.codigoPoste || "Sem código"} | 📅 ${poste.dataLancamento ? poste.dataLancamento.split(' ')[0] : "-"}</div>
-      </div>
-      
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <span style="padding:6px 16px;border-radius:20px;background:${isConcluido ? '#4caf5020' : '#ff980020'};color:${isConcluido ? '#4caf50' : '#ff9800'};font-size:13px;font-weight:600">${poste.status || "Em andamento"}</span>
-        <span style="font-size:13px;color:#666">⏱️ Tempo: ${tempo}</span>
-      </div>
-      
-      <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-weight:600;margin-bottom:10px;color:#667eea">🏗️ POSTE PRIMÁRIO</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><strong>Poste:</strong> ${poste.postePrimario || "-"}</div>
-          <div><strong>Estrutura:</strong> ${poste.estruturaPrimaria || "-"}</div>
-        </div>
-      </div>
-      
-      ${(poste.posteSecundario || poste.estruturaSecundaria) ? `
-        <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-weight:600;margin-bottom:10px;color:#667eea">🏗️ POSTE SECUNDÁRIO</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div><strong>Poste:</strong> ${poste.posteSecundario || "-"}</div>
-            <div><strong>Estrutura:</strong> ${poste.estruturaSecundaria || "-"}</div>
-          </div>
-        </div>
-      ` : ''}
-      
-      <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-weight:600;margin-bottom:10px;color:#667eea">⚡ SERVIÇOS</div>
-        <div style="margin-bottom:8px"><strong>Linha Viva:</strong> ${poste.linhaViva || "Não informado"}</div>
-        <div><strong>Serviços de Podas:</strong> ${poste.servicosPodas || "Não informado"}</div>
-      </div>
-      
-      ${poste.observacoes ? `
-        <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-weight:600;margin-bottom:10px;color:#667eea">📝 OBSERVAÇÕES</div>
-          <div style="font-size:13px">${poste.observacoes}</div>
-        </div>
-      ` : ''}
-      
-      <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-weight:600;margin-bottom:10px;color:#667eea">📍 LOCALIZAÇÃO</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div><strong>Latitude:</strong> ${poste.latitude || "-"}</div>
-          <div><strong>Longitude:</strong> ${poste.longitude || "-"}</div>
-        </div>
-        <button onclick="ativarStreetView(${poste.latitude || 0}, ${poste.longitude || 0})" style="width:100%;padding:8px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer">👁️ Ver no Street View</button>
-      </div>
-      
-      <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div><strong>👤 Usuário responsável:</strong> ${poste.usuario || "Não identificado"}</div>
-      </div>
-      
-      ${fotosHTML}
-      
-      <button onclick="selecionarPosteParaEdicao('${poste.id}')" style="width:100%;margin-top:16px;padding:10px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">
-        ✏️ Editar este poste
-      </button>
-    </div>
-  `;
-}
-
-function fecharDetalhes() {
-  const listaContainer = document.getElementById("listaPostesContainer");
-  const detalhesContainer = document.getElementById("detalhesPosteContainer");
-  
-  listaContainer.style.display = "block";
-  detalhesContainer.style.display = "none";
-  posteSelecionadoId = null;
-  atualizarListaPostes();
-}
-
-function selecionarPosteParaEdicao(posteId) {
-  fecharDetalhes();
-  const tr = document.querySelector(`#tabelaPostes tbody tr[data-id="${posteId}"]`);
-  if (tr) {
-    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const editBtn = tr.querySelector('.btn-edit');
-    if (editBtn) setTimeout(() => editBtn.click(), 500);
-  }
-}
-
-function abrirTodasFotos(foto1, foto2, foto3) {
-  const fotos = [foto1, foto2, foto3].filter(f => f);
-  if (!fotos.length) return;
   const html = `
     <!DOCTYPE html>
     <html>
-    <head><meta charset="UTF-8"><title>Fotos do Poste</title>
-    <style>body{font-family:sans-serif;background:#f1f5f9;padding:20px;}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
-    .card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05);cursor:pointer;}
-    .card img{width:100%;height:250px;object-fit:cover;}
-    .card-footer{padding:12px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;}
-    .abrir{background:#3b82f6;color:white;border:none;padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;}
-    </style></head>
-    <body><div class="grid">
-    ${fotos.map((f, i) => `
-      <div class="card" onclick="window.open('${f}','_blank')">
-        <img src="${f}" loading="lazy">
-        <div class="card-footer"><span>Foto ${i+1}</span><button class="abrir" onclick="event.stopPropagation();window.open('${f}','_blank')">Abrir</button></div>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Fotos do Poste</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #1a1a2e;
+          padding: 20px;
+          min-height: 100vh;
+        }
+        h2 {
+          color: white;
+          text-align: center;
+          margin-bottom: 30px;
+          font-weight: 600;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 25px;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+        .card {
+          background: white;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          cursor: pointer;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+        .card img {
+          width: 100%;
+          height: 300px;
+          object-fit: cover;
+        }
+        .card-footer {
+          padding: 15px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: white;
+        }
+        .card-footer span {
+          font-weight: 600;
+          color: #333;
+        }
+        .abrir {
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          padding: 6px 16px;
+          border-radius: 20px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+        .abrir:hover {
+          opacity: 0.9;
+        }
+        .close-btn {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(255,255,255,0.2);
+          backdrop-filter: blur(10px);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 30px;
+          cursor: pointer;
+          font-size: 14px;
+          z-index: 1000;
+          transition: background 0.2s;
+        }
+        .close-btn:hover {
+          background: rgba(255,255,255,0.3);
+        }
+        @media (max-width: 768px) {
+          .grid {
+            grid-template-columns: 1fr;
+          }
+          .card img {
+            height: 250px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <button class="close-btn" onclick="window.close()">✕ Fechar</button>
+      <h2>📸 Galeria de Fotos do Poste</h2>
+      <div class="grid">
+        ${fotos.map((f, i) => `
+          <div class="card" onclick="window.open('${f}','_blank')">
+            <img src="${f}" loading="lazy" alt="Foto ${i+1}">
+            <div class="card-footer">
+              <span>📷 Foto ${i+1}</span>
+              <button class="abrir" onclick="event.stopPropagation();window.open('${f}','_blank')">Abrir em tela cheia</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
-    `).join('')}
-    </div></body></html>
+    </body>
+    </html>
   `;
+  
   const win = window.open('', '_blank');
-  if (win) { win.document.write(html); win.document.close(); }
-  else alert('Permita pop-ups para ver as fotos.');
+  if (win) { 
+    win.document.write(html); 
+    win.document.close(); 
+  } else { 
+    alert('Por favor, permita pop-ups para ver as fotos.');
+  }
 }
 
 // ========== FUNÇÕES DO MAPA ==========
 function recentrarMapa() {
   if (!map || listaVisivel.length === 0) return;
+  if (infoWindow) infoWindow.close();
   const bounds = new google.maps.LatLngBounds();
   let count = 0;
   listaVisivel.forEach(p => {
@@ -409,6 +441,7 @@ function recentrarMapa() {
 
 function alternarVisualizacaoMapa(botao) {
   if (!map) return;
+  if (infoWindow) infoWindow.close();
   const currentType = map.getMapTypeId();
   const newType = currentType === google.maps.MapTypeId.ROADMAP ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP;
   map.setMapTypeId(newType);
@@ -539,9 +572,7 @@ function carregarPostes() {
     });
     
     lista.sort((a,b) => (b._dataConvertida||0) - (a._dataConvertida||0));
-    
     todosOsPostes = removerPostesDuplicados(lista);
-    
     paginaAtual = 1;
     
     if (mapaInicializado) {
@@ -603,7 +634,6 @@ function filtrarPostes() {
   exibirPostes(listaVisivel);
   mostrarMapaOtimizado(listaVisivel);
   atualizarPaginacao(totalPaginas);
-  atualizarListaPostes();
   document.getElementById("contadorMapa").innerText = `${listaVisivel.length} postes`;
 }
 
@@ -1019,7 +1049,3 @@ window.togglePowerBI = togglePowerBI;
 window.baixarPDFModelo = baixarPDFModelo;
 window.fazerLogin = fazerLogin;
 window.fazerLogout = fazerLogout;
-window.filtrarListaPostes = filtrarListaPostes;
-window.selecionarPosteNaLista = selecionarPosteNaLista;
-window.fecharDetalhes = fecharDetalhes;
-window.selecionarPosteParaEdicao = selecionarPosteParaEdicao;
