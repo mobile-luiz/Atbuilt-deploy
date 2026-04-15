@@ -7,208 +7,179 @@
 
   <link rel="icon" href="logo-atbuilt.png" type="image/png" />
 
-  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- CSS Principal -->
+  <link rel="stylesheet" href="styles.css">
 
+  <!-- Firebase e Bibliotecas -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <script src="https://unpkg.com/@googlemaps/markerclustererplus/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/google-maps-utility-library-v3-infobox@latest/infobox.min.js"></script>
-
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNfO72QTnIMEn2g743sO_5UR5o-2KmEig&callback=inicializarMapa" async defer></script>
-  
-  <style>
-    /* Estilos adicionais para garantir que o mapa ocupe todo espaço */
-    .mapa-painel-wrapper {
-      width: 100%;
-      height: 500px;
-      position: relative;
-      margin-top: 20px;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    
-    .mapa-container {
-      width: 100%;
-      height: 100%;
-    }
-    
-    .painel-lateral {
-      display: none !important;
-    }
-    
-    @media (max-width: 768px) {
-      .mapa-painel-wrapper {
-        height: 400px;
-      }
-    }
-  </style>
 </head>
 <body>
-  <div id="loginContainer" class="login-container">
-    <div class="login-box">
-      <h2>Acesso ao Sistema</h2>
-      
-      <input type="text" id="loginEmail" placeholder="E-mail ou Usuário" />
-      <input type="password" id="loginSenha" placeholder="Senha" />
-      
-      <button onclick="fazerLogin()">Entrar</button>
-      
-      <div id="loginErro" class="login-erro"></div>
-      
-      <div class="login-logo">
-        <img src="logo-atbuilt.png" alt="Logo" />
-        <h3 style="font-size:16px; color:#1a202c; margin: 5px 0;">Atbuilt</h3>
-        <p style="font-size:13px; color:#666;">Sistema de Gestão Inteligente</p>
-      </div>
+
+<!-- TELA DE LOGIN -->
+<div id="loginContainer" class="login-container">
+  <div class="login-box">
+    <div class="login-logo-top">
+      <img src="logo-atbuilt.png" alt="Logo Atbuilt" />
+    </div>
+    <h2>Acesso ao Sistema</h2>
+    <p class="login-subtitle">Gestão Inteligente de Postes</p>
+    <input type="text" id="loginEmail" placeholder="E-mail" />
+    <input type="password" id="loginSenha" placeholder="Senha" />
+    <button onclick="fazerLogin()">Entrar</button>
+    <div id="loginErro" class="login-erro"></div>
+    <div class="login-footer">
+      <p>Sistema Atbuilt © 2024</p>
+    </div>
+  </div>
+</div>
+
+<!-- SISTEMA PRINCIPAL -->
+<div id="sistemaContainer" class="sistema-container">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <img src="logo-atbuilt.png" alt="Logo" class="site-logo" />
+      <h2>Atbuilt – Gestão de Postes</h2>
+    </div>
+    <div class="top-bar-right">
+      <span class="user-email" id="userEmail"></span>
+      <button onclick="fazerLogout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
   </div>
 
-  <div id="sistemaContainer" class="sistema-container">
-    <div class="top-bar">
-      <h2>Atbuilt – Sistema de Gestão de Postes</h2>
-      <div class="top-bar-right">
-      
-      </div>
+  <!-- FILTROS -->
+  <div class="filtros-card">
+    <div class="filtros-header">
+      <h3><i class="fas fa-filter"></i> Filtros de Busca</h3>
+      <button onclick="limparFiltros()" class="limpar-filtros-btn"><i class="fas fa-eraser"></i> Limpar Filtros</button>
     </div>
-
-    <div class="header">
-      <div>
-        <label for="usuario">E-mail do usuário</label>
-        <input type="text" id="usuario" oninput="filtrarPostes()" placeholder="Filtrar por usuário" />
+    <div class="filtros-grid">
+      <div class="filtro-group">
+        <label><i class="fas fa-folder"></i> ID do Projeto</label>
+        <input type="text" id="filtroProjeto" oninput="filtrarPostes()" placeholder="Filtrar por projeto" />
       </div>
-
-      <div>
-        <label for="filtroProjeto">ID do Projeto</label>
-        <input type="text" id="filtroProjeto" oninput="filtrarPostes()" placeholder="Filtrar por ID do Projeto" />
-      </div>
-
-      <div>
-        <label for="filtroPoste">Código do Poste</label>
+      <div class="filtro-group">
+        <label><i class="fas fa-hashtag"></i> Código do Poste</label>
         <input type="text" id="filtroPoste" oninput="filtrarPostes()" placeholder="Filtrar por código" />
       </div>
-
-      <div>
-        <label for="filtroStatus">Status</label>
+      <div class="filtro-group">
+        <label><i class="fas fa-user"></i> Usuário</label>
+        <input type="text" id="usuario" oninput="filtrarPostes()" placeholder="Filtrar por usuário" />
+      </div>
+      <div class="filtro-group">
+        <label><i class="fas fa-chart-line"></i> Status</label>
         <select id="filtroStatus" onchange="filtrarPostes()">
           <option value="">Todos</option>
           <option value="em andamento">Em andamento</option>
           <option value="concluído">Concluído</option>
         </select>
       </div>
-
-      <div>
-        <label for="dataInicial">De:</label>
+      <div class="filtro-group">
+        <label><i class="fas fa-calendar-alt"></i> Data Inicial</label>
         <input type="date" id="dataInicial" onchange="filtrarPostes()" />
       </div>
-      
-      <div>
-        <label for="dataFinal">Até:</label>
+      <div class="filtro-group">
+        <label><i class="fas fa-calendar-alt"></i> Data Final</label>
         <input type="date" id="dataFinal" onchange="filtrarPostes()" />
       </div>
     </div>
-
-    <div class="acoes">
-      <button onclick="baixarPDFModelo()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);"> 📄 Gerar PDF (Ctrl+P) </button>
-      <button class="warning" id="btnMostrarPodas" onclick="togglePodas()">🌿 Mostrar Podas</button>
-    </div>
-
-    <div id="contadorStatus"></div>
-
-    <div id="paginacao"></div>
-
-    <div class="scroll-table">
-      <table id="tabelaPostes">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>ID Projeto</th>
-            <th>PG</th>
-            <th>Poste Primário</th>
-            <th>Estrut. Primária</th>
-            <th>Poste Secundário</th>
-            <th>Estrut. Secundária</th>
-            <th>Linha Viva</th>
-            <th>Serviços Podas</th>
-            <th>Observações</th>
-            <th>Lat</th>
-            <th>Lng</th>
-            <th>Usuário</th>
-            <th>Status</th>
-            <th>Tempo</th>
-            <th>Ações</th>
-            <th>Excluir</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <h3 class="map-title">📍 Mapa dos Postes</h3>
-
-    <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; align-items: center; justify-content: space-between; background: white; padding: 12px 20px; border-radius: 10px; box-shadow: 0 2px 15px rgba(0,0,0,0.08);">
-      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 12px; height: 12px; background-color: #ffc107; border-radius: 50%;"></span>
-          <span style="font-size: 13px;">Em andamento</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 12px; height: 12px; background-color: #dc3545; border-radius: 50%;"></span>
-          <span style="font-size: 13px;">Concluído</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 16px; height: 16px; background: url('poste.png') center/contain no-repeat;"></span>
-          <span style="font-size: 13px;">Poste</span>
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button onclick="recentrarMapa()" style="padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 20px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-          <span>🎯</span> Recentrar
-        </button>
-        
-        <button id="btnSatelite" onclick="alternarVisualizacaoMapa(this)" style="padding: 8px 16px; background: white; color: #333; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-          <span>🛰️</span> Satélite
-        </button>
-        
-        <div style="padding: 8px 16px; background: #f8f9fa; border-radius: 20px; font-size: 12px;">
-          <span>📍</span>
-          <span id="contadorMapa">0 postes</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Container do Mapa - Painel lateral removido -->
-    <div class="mapa-painel-wrapper">
-      <div id="map" class="mapa-container"></div>
-    </div>
-
-    <div id="powerbiContainer" class="powerbi-container">
-      <button onclick="togglePowerBI()" style="position: absolute; top: 16px; right: 16px; z-index: 10; background: #1e88e5; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
-        ← Voltar ao Painel
-      </button>
-      <iframe
-        title="Atbuilt atual"
-        width="100%"
-        height="100%"
-        src="https://app.powerbi.com/view?r=eyJrIjoiOGU1YzAwZTEtZTViZS00YWY5LThlOWYtMDVhODU2NmMzODMwIiwidCI6ImMyNGEyNGRjLWJjYTAtNGYyYS1hOTRmLWY3NDVkNDdkZTE4MCJ9"
-        frameborder="0"
-        allowFullScreen="true"
-        style="border: none;"
-      ></iframe>
-    </div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- AÇÕES RÁPIDAS -->
+  <div class="acoes">
+    <button onclick="baixarPDFModelo()" class="btn-pdf"><i class="fas fa-file-pdf"></i> Relatório PDF</button>
+    <button onclick="abrirModalProjetos()" class="btn-resumo"><i class="fas fa-chart-pie"></i> Lista de Projetos</button>
+    <button id="btnMostrarPodas" onclick="togglePodas()" class="btn-podas"><i class="fas fa-tree"></i> Mostrar Podas</button>
+  </div>
+
+  <!-- CONTADOR DE STATUS -->
+  <div id="contadorStatus" class="contador-status"></div>
+
+  <!-- PAGINAÇÃO -->
+  <div id="paginacao" class="paginacao"></div>
+
+  <!-- TABELA DE POSTES -->
+  <div class="scroll-table">
+    <table id="tabelaPostes">
+      <thead>
+        <tr>
+          <th>Data</th><th>Projeto</th><th>PG</th><th>Poste Prim.</th><th>Estrut.Prim</th>
+          <th>Poste Sec.</th><th>Estrut.Sec</th><th>Linha Viva</th><th>Podas</th>
+          <th>Obs</th><th>Lat</th><th>Lng</th><th>Usuário</th><th>Status</th><th>Tempo</th><th>Ações</th><th>Excluir</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- MAPA -->
+  <h3 class="map-title"><i class="fas fa-map-marker-alt"></i> Mapa dos Postes</h3>
+  <div class="mapa-legenda">
+    <div class="legenda-item"><span class="legenda-cor andamento"></span> Em andamento</div>
+    <div class="legenda-item"><span class="legenda-cor concluido"></span> Concluído</div>
+    <div class="legenda-item"><i class="fas fa-map-pin"></i> Poste</div>
+    <div class="legenda-item"><button onclick="recentrarMapa()" class="btn-recentrar"><i class="fas fa-crosshairs"></i> Recentrar</button></div>
+    <div class="legenda-item"><button id="btnSatelite" onclick="alternarVisualizacaoMapa(this)" class="btn-mapa"><i class="fas fa-satellite"></i> Satélite</button></div>
+    <div class="legenda-item"><span id="contadorMapa" class="contador-mapa">0 postes</span></div>
+  </div>
+  <div class="mapa-wrapper">
+    <div id="map" class="mapa-container"></div>
+  </div>
+</div>
+
+<!-- MODAL DE PROJETOS -->
+<div id="modalProjetos" class="modal-projetos">
+  <div class="modal-projetos-content">
+    <div class="modal-projetos-header">
+      <h2><i class="fas fa-chart-pie"></i> Lista de Projetos</h2>
+      <button class="modal-projetos-close" onclick="fecharModalProjetos()">&times;</button>
+    </div>
+    <div class="modal-projetos-body">
+      <div class="modal-toolbar">
+        <div class="modal-search">
+          <i class="fas fa-search"></i>
+          <input type="text" id="modalFiltroProjetos" placeholder="Buscar projeto..." oninput="filtrarListaProjetos()">
+        </div>
+        <div class="modal-actions">
+          <button onclick="limparFiltroProjetos()" class="btn-clear-filter"><i class="fas fa-times"></i> Limpar</button>
+          <button onclick="exportarProjetosExcel()" class="btn-export-excel"><i class="fas fa-file-excel"></i> Excel</button>
+          <button onclick="exportarProjetosPDF()" class="btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
+        </div>
+      </div>
+      <div id="statsContainer" class="stats-grid"></div>
+      <div id="projetosGrid" class="projetos-grid"></div>
+      <div id="modalPaginacao" class="modal-paginacao"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR VALOR DA OBRA -->
+<div id="modalEditarValor" class="modal-valor-obra">
+  <div class="modal-valor-content">
+    <h3><i class="fas fa-dollar-sign"></i> Editar Valor da Obra</h3>
+    <p>Defina o valor total do projeto</p>
+    <input type="text" id="valorObraInput" class="modal-valor-input" placeholder="R$ 0,00">
+    <div class="modal-valor-actions">
+      <button onclick="fecharModalEditarValor()" class="btn-cancelar-valor">Cancelar</button>
+      <button onclick="salvarValorObra()" class="btn-salvar-valor">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript Principal -->
+<script src="script.js"></script>
 </body>
 </html>
-
 
 
 
