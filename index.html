@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -1239,8 +1240,7 @@ function carregarPostes() {
     const chavesVistas = new Set();
 
     listaBruta.forEach(p => {
-      // Criamos uma "chave única" baseada em Data, Hora e Código do Poste
-      // Se esses 3 baterem, o sistema considerará duplicado
+      // Chave baseada em Data/Hora e Código do Poste para evitar duplicatas idênticas
       const chave = `${p.dataLancamento}_${p.codigoPoste}`;
 
       if (!chavesVistas.has(chave)) {
@@ -1248,13 +1248,19 @@ function carregarPostes() {
         registrosUnicos.push(p);
       }
     });
-    // ---------------------------------------
 
-    // Ordenação (mantendo sua lógica original)
+    // --- LÓGICA DE ORDENAÇÃO (Data mais recente no topo) ---
     registrosUnicos.sort((a, b) => {
-      const dataA = a.dataLancamento ? new Date(a.dataLancamento.split(' ')[0].split('/').reverse().join('-')) : 0;
-      const dataB = b.dataLancamento ? new Date(b.dataLancamento.split(' ')[0].split('/').reverse().join('-')) : 0;
-      return dataB - dataA;
+      // Converte "DD/MM/YYYY HH:mm:ss" para um objeto Date comparável
+      // Se não houver data, assume 0 para ir para o fim da lista
+      const parseData = (str) => {
+        if (!str) return 0;
+        const [data, hora] = str.split(' ');
+        const [d, m, y] = data.split('/');
+        return new Date(`${y}-${m}-${d}T${hora || '00:00:00'}`).getTime();
+      };
+
+      return parseData(b.dataLancamento) - parseData(a.dataLancamento);
     });
 
     todosOsPostes = registrosUnicos;
@@ -1265,6 +1271,8 @@ function carregarPostes() {
     filtrarPostes();
   });
 }
+
+
 
 function atualizarContadorStatus() {
   const totalProj = new Set(todosOsPostes.map(p => p.idProjeto).filter(Boolean)).size;
