@@ -808,6 +808,8 @@
     <button onclick="baixarPDFModelo()" class="btn-pdf"><i class="fas fa-file-pdf"></i> Relatório PDF</button>
     <button onclick="abrirModalProjetos()" class="btn-resumo"><i class="fas fa-chart-pie"></i> Lista de Projetos</button>
     <button id="btnMostrarPodas" onclick="togglePodas()" class="btn-podas"><i class="fas fa-tree"></i> Mostrar Podas</button>
+    
+    
   </div>
 
   <div id="contadorStatus" class="contador-status"></div>
@@ -1230,14 +1232,34 @@ function carregarValoresObra() {
 function carregarPostes() {
   db.ref("postes").on("value", snapshot => {
     const obj = snapshot.val() || {};
-    const lista = Object.entries(obj).map(([id, data]) => ({ id, ...data }));
-    lista.sort((a, b) => {
+    const listaBruta = Object.entries(obj).map(([id, data]) => ({ id, ...data }));
+
+    // --- LÓGICA PARA REMOVER DUPLICADOS ---
+    const registrosUnicos = [];
+    const chavesVistas = new Set();
+
+    listaBruta.forEach(p => {
+      // Criamos uma "chave única" baseada em Data, Hora e Código do Poste
+      // Se esses 3 baterem, o sistema considerará duplicado
+      const chave = `${p.dataLancamento}_${p.codigoPoste}`;
+
+      if (!chavesVistas.has(chave)) {
+        chavesVistas.add(chave);
+        registrosUnicos.push(p);
+      }
+    });
+    // ---------------------------------------
+
+    // Ordenação (mantendo sua lógica original)
+    registrosUnicos.sort((a, b) => {
       const dataA = a.dataLancamento ? new Date(a.dataLancamento.split(' ')[0].split('/').reverse().join('-')) : 0;
       const dataB = b.dataLancamento ? new Date(b.dataLancamento.split(' ')[0].split('/').reverse().join('-')) : 0;
       return dataB - dataA;
     });
-    todosOsPostes = lista;
+
+    todosOsPostes = registrosUnicos;
     paginaAtual = 1;
+    
     if (mapaInicializado) criarTodosMarcadores();
     atualizarContadorStatus();
     filtrarPostes();
@@ -1773,6 +1795,21 @@ window.alternarVisualizacaoMapa = alternarVisualizacaoMapa;
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
