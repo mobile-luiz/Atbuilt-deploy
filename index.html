@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -634,6 +633,16 @@
       margin-top: 8px;
     }
 
+    .projeto-nome {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-bottom: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .projeto-stats {
       display: flex;
       gap: 24px;
@@ -809,8 +818,6 @@
     <button onclick="baixarPDFModelo()" class="btn-pdf"><i class="fas fa-file-pdf"></i> Relatório PDF</button>
     <button onclick="abrirModalProjetos()" class="btn-resumo"><i class="fas fa-chart-pie"></i> Lista de Projetos</button>
     <button id="btnMostrarPodas" onclick="togglePodas()" class="btn-podas"><i class="fas fa-tree"></i> Mostrar Podas</button>
-    
-    
   </div>
 
   <div id="contadorStatus" class="contador-status"></div>
@@ -826,7 +833,7 @@
          </tr>
       </thead>
       <tbody></tbody>
-    </table>
+     </table>
   </div>
 
   <h3 class="map-title"><i class="fas fa-map-marker-alt"></i> Mapa dos Postes</h3>
@@ -923,6 +930,271 @@ function somarValor(labelField, statusField, lista) {
     if (matches) matches.forEach(val => { total += parseFloat(val.replace(/[^\d,]/g, "").replace(",", ".")) || 0; });
   });
   return total;
+}
+
+// ==================== FUNÇÃO DE COMPARTILHAR LOCALIZAÇÃO ====================
+// ==================== COMPARTILHAR KML DO PROJETO ====================
+function compartilharLocalizacaoProjeto(idProjeto) {
+  if (!idProjeto) {
+    alert("ID do projeto não informado.");
+    return;
+  }
+  
+  // Buscar todos os postes do projeto específico
+  const postesDoProjeto = todosOsPostes.filter(p => p.idProjeto === idProjeto);
+  
+  if (postesDoProjeto.length === 0) {
+    alert(`Nenhum poste encontrado para o projeto "${idProjeto}".`);
+    return;
+  }
+  
+  // Contar postes com coordenadas válidas
+  const postesComCoordenadas = postesDoProjeto.filter(p => {
+    const lat = parseFloat(p.latitude);
+    const lng = parseFloat(p.longitude);
+    return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+  });
+  
+  if (postesComCoordenadas.length === 0) {
+    alert("Nenhum poste deste projeto possui coordenadas de localização válidas.");
+    return;
+  }
+  
+  // Contar postes por status
+  const postesConcluidos = postesDoProjeto.filter(p => normalizarTexto(p.status) === "concluído").length;
+  const postesAndamento = postesDoProjeto.length - postesConcluidos;
+  
+  // Calcular totais financeiros
+  let totalPodas = 0, totalLinhaViva = 0;
+  postesDoProjeto.forEach(poste => {
+    if (normalizarTexto(poste.status) !== "concluído") {
+      const podasMatch = (poste.servicosPodas || "").toLowerCase().match(/r\$ ?[\d.,]+/i);
+      if (podasMatch) totalPodas += parseFloat(podasMatch[0].replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+      
+      const lvMatch = (poste.linhaViva || "").toLowerCase().match(/r\$ ?[\d.,]+/i);
+      if (lvMatch) totalLinhaViva += parseFloat(lvMatch[0].replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+    }
+  });
+  
+  const valorObra = valoresObra[idProjeto] || 0;
+  const totalGasto = totalPodas + totalLinhaViva;
+  const percentualGasto = valorObra > 0 ? (totalGasto / valorObra * 100).toFixed(1) : 0;
+  
+  // Gerar KML
+  const kml = gerarKMLProjetoEstilizado(idProjeto, postesDoProjeto, {
+    totalPostes: postesDoProjeto.length,
+    postesComCoordenadas: postesComCoordenadas.length,
+    postesConcluidos,
+    postesAndamento,
+    totalPodas,
+    totalLinhaViva,
+    valorObra,
+    totalGasto,
+    percentualGasto,
+    dataGeracao: new Date().toLocaleString("pt-BR")
+  });
+  
+  // Criar e fazer download do arquivo
+  const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `projeto_${idProjeto.replace(/[^a-zA-Z0-9]/g, "_")}.kml`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // Mostrar confirmação com estatísticas
+  alert(`✅ KML gerado com sucesso!\n\n📊 Resumo do Projeto "${idProjeto}":\n• Postes totais: ${postesDoProjeto.length}\n• Postes com localização: ${postesComCoordenadas.length}\n• Concluídos: ${postesConcluidos}\n• Em andamento: ${postesAndamento}\n💰 Podas: ${formatarMoeda(totalPodas)}\n⚡ LV: ${formatarMoeda(totalLinhaViva)}\n💵 Total Gasto: ${formatarMoeda(totalGasto)}\n${valorObra > 0 ? `📈 Percentual do orçamento: ${percentualGasto}%` : ""}`);
+}
+
+function gerarKMLProjetoEstilizado(idProjeto, postes, stats) {
+  // Data atual para o cabeçalho
+  const dataAtual = new Date().toISOString().split('T')[0];
+  
+  // Cabeçalho do KML
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>PROJETO ${idProjeto} - Atbuilt</name>
+    <description><![CDATA[
+📋 PROJETO: ${idProjeto}
+📅 Data de exportação: ${stats.dataGeracao}
+📍 Postes no projeto: ${stats.totalPostes}
+📍 Postes com coordenadas: ${stats.postesComCoordenadas}
+✅ Postes concluídos: ${stats.postesConcluidos}
+🔄 Postes em andamento: ${stats.postesAndamento}
+💰 Total Podas: ${formatarMoeda(stats.totalPodas)}
+⚡ Total Linha Viva: ${formatarMoeda(stats.totalLinhaViva)}
+💵 Total Gasto: ${formatarMoeda(stats.totalGasto)}
+${stats.valorObra > 0 ? `🎯 Valor da Obra: ${formatarMoeda(stats.valorObra)}
+📊 Percentual do orçamento gasto: ${stats.percentualGasto}%` : ''}
+    ]]></description>
+    
+    <!-- Estilo para postes EM ANDAMENTO (ícone laranja/amarelo) -->
+    <Style id="style-andamento">
+      <IconStyle>
+        <color>ff1e90ff</color>
+        <scale>1.2</scale>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
+        </Icon>
+        <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+      </IconStyle>
+      <LabelStyle>
+        <scale>0.8</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[
+          <div style="font-family: Arial, sans-serif; padding: 8px;">
+            <b style="color: #f59e0b;">🟡 POSTE EM ANDAMENTO</b><br/>
+            <b>Código:</b> $[name]<br/>
+            <b>Projeto:</b> ${idProjeto}<br/>
+            <b>Status:</b> Em andamento<br/>
+            $[description]
+          </div>
+        ]]></text>
+      </BalloonStyle>
+    </Style>
+    
+    <!-- Estilo para postes CONCLUÍDOS (ícone verde) -->
+    <Style id="style-concluido">
+      <IconStyle>
+        <color>ff00ff00</color>
+        <scale>1.2</scale>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/pushpin/grn-pushpin.png</href>
+        </Icon>
+        <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+      </IconStyle>
+      <LabelStyle>
+        <scale>0.8</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[
+          <div style="font-family: Arial, sans-serif; padding: 8px;">
+            <b style="color: #10b981;">✅ POSTE CONCLUÍDO</b><br/>
+            <b>Código:</b> $[name]<br/>
+            <b>Projeto:</b> ${idProjeto}<br/>
+            <b>Status:</b> Concluído<br/>
+            $[description]
+          </div>
+        ]]></text>
+      </BalloonStyle>
+    </Style>
+    
+    <!-- Pasta para organizar os postes -->
+    <Folder>
+      <name>Postes - Projeto ${idProjeto}</name>
+      <open>1</open>
+`;
+
+  // Adicionar cada poste como um Placemark
+  postes.forEach(poste => {
+    const lat = parseFloat(poste.latitude);
+    const lng = parseFloat(poste.longitude);
+    
+    // Pular postes sem coordenadas válidas
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+    
+    const status = normalizarTexto(poste.status);
+    const isConcluido = status === "concluído";
+    const estilo = isConcluido ? "#style-concluido" : "#style-andamento";
+    
+    const nomePoste = poste.codigoPoste || `Poste-${poste.id?.substring(0, 8)}`;
+    const dataLanc = poste.dataLancamento || "Data não registrada";
+    const usuario = poste.usuario || "Não informado";
+    
+    // Extrair valores monetários
+    let valorPodas = "-";
+    let valorLinhaViva = "-";
+    
+    const podasMatch = (poste.servicosPodas || "").toLowerCase().match(/r\$ ?[\d.,]+/i);
+    if (podasMatch && !isConcluido) {
+      valorPodas = podasMatch[0].toUpperCase();
+    }
+    
+    const lvMatch = (poste.linhaViva || "").toLowerCase().match(/r\$ ?[\d.,]+/i);
+    if (lvMatch && !isConcluido) {
+      valorLinhaViva = lvMatch[0].toUpperCase();
+    }
+    
+    // Construir descrição detalhada
+    let descricao = `<![CDATA[
+      <div style="font-family: Arial, sans-serif; max-width: 300px;">
+        <b>📅 Data de lançamento:</b> ${dataLanc}<br/>
+        <b>👤 Usuário:</b> ${escapeHtml(usuario)}<br/>
+        <b>📍 Coordenadas:</b><br/>
+        &nbsp;&nbsp;Latitude: ${lat}<br/>
+        &nbsp;&nbsp;Longitude: ${lng}<br/>
+        <hr style="margin: 8px 0;"/>
+        <b>🏗️ POSTE PRIMÁRIO:</b><br/>
+        &nbsp;&nbsp;Poste: ${escapeHtml(poste.postePrimario || "-")}<br/>
+        &nbsp;&nbsp;Estrutura: ${escapeHtml(poste.estruturaPrimaria || "-")}<br/>
+        <b>🏗️ POSTE SECUNDÁRIO:</b><br/>
+        &nbsp;&nbsp;Poste: ${escapeHtml(poste.posteSecundario || "-")}<br/>
+        &nbsp;&nbsp;Estrutura: ${escapeHtml(poste.estruturaSecundaria || "-")}<br/>
+        <hr style="margin: 8px 0;"/>
+        <b>⚡ LINHA VIVA:</b><br/>
+        &nbsp;&nbsp;${escapeHtml(poste.linhaViva || "-")} ${valorLinhaViva !== "-" ? `<b style="color: #2563eb;">(${valorLinhaViva})</b>` : ""}<br/>
+        <b>🌳 SERVIÇOS DE PODAS:</b><br/>
+        &nbsp;&nbsp;${escapeHtml(poste.servicosPodas || "-")} ${valorPodas !== "-" ? `<b style="color: #f59e0b;">(${valorPodas})</b>` : ""}<br/>`;
+    
+    if (poste.observacoes) {
+      descricao += `<hr style="margin: 8px 0;"/>
+      <b>📝 OBSERVAÇÕES:</b><br/>
+      &nbsp;&nbsp;${escapeHtml(poste.observacoes)}<br/>`;
+    }
+    
+    descricao += `<hr style="margin: 8px 0;"/>
+      <i>🔗 Clique no marcador para mais detalhes</i>
+      </div>
+    ]]>`;
+    
+    kml += `
+      <Placemark>
+        <name>${escapeHtml(nomePoste)}</name>
+        <description>${descricao}</description>
+        <styleUrl>${estilo}</styleUrl>
+        <ExtendedData>
+          <Data name="PROJETO"><value>${idProjeto}</value></Data>
+          <Data name="STATUS"><value>${isConcluido ? "Concluído" : "Em andamento"}</value></Data>
+          <Data name="CODIGO_POSTE"><value>${escapeHtml(nomePoste)}</value></Data>
+          <Data name="DATA_LANCAMENTO"><value>${dataLanc}</value></Data>
+          <Data name="USUARIO"><value>${escapeHtml(usuario)}</value></Data>
+          <Data name="LATITUDE"><value>${lat}</value></Data>
+          <Data name="LONGITUDE"><value>${lng}</value></Data>
+          ${poste.postePrimario ? `<Data name="POSTE_PRIMARIO"><value>${escapeHtml(poste.postePrimario)}</value></Data>` : ''}
+          ${poste.estruturaPrimaria ? `<Data name="ESTRUTURA_PRIMARIA"><value>${escapeHtml(poste.estruturaPrimaria)}</value></Data>` : ''}
+          ${poste.posteSecundario ? `<Data name="POSTE_SECUNDARIO"><value>${escapeHtml(poste.posteSecundario)}</value></Data>` : ''}
+          ${poste.estruturaSecundaria ? `<Data name="ESTRUTURA_SECUNDARIA"><value>${escapeHtml(poste.estruturaSecundaria)}</value></Data>` : ''}
+        </ExtendedData>
+        <Point>
+          <coordinates>${lng},${lat},0</coordinates>
+        </Point>
+      </Placemark>`;
+  });
+  
+  // Finalizar KML
+  kml += `
+    </Folder>
+    
+    <!-- Informações de legenda -->
+    <ScreenOverlay>
+      <name>Legenda</name>
+      <Icon>
+        <href>https://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
+      </Icon>
+      <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+      <screenXY x="10" y="50" xunits="pixels" yunits="pixels"/>
+      <size x="32" y="32" xunits="pixels" yunits="pixels"/>
+    </ScreenOverlay>
+    
+  </Document>
+</kml>`;
+  
+  return kml;
 }
 
 // ==================== FUNÇÕES DE FOTOS ====================
@@ -1272,8 +1544,6 @@ function carregarPostes() {
   });
 }
 
-
-
 function atualizarContadorStatus() {
   const totalProj = new Set(todosOsPostes.map(p => p.idProjeto).filter(Boolean)).size;
   const totalPodas = somarValor("servicosPodas", "status", todosOsPostes);
@@ -1524,7 +1794,14 @@ function atualizarListaProjetos() {
   listaParaResumo.forEach(poste => {
     const projetoId = (poste.idProjeto || "Sem Projeto").trim();
     if (!projetosMap.has(projetoId)) {
-      projetosMap.set(projetoId, { id: projetoId, postes: [], totalPodas: 0, totalLinhaViva: 0, valorObra: valoresObra[projetoId] || 0 });
+      projetosMap.set(projetoId, { 
+        id: projetoId, 
+        nome: poste.nomeProjeto || projetoId,
+        postes: [], 
+        totalPodas: 0, 
+        totalLinhaViva: 0, 
+        valorObra: valoresObra[projetoId] || 0 
+      });
     }
     const projeto = projetosMap.get(projetoId);
     projeto.postes.push(poste);
@@ -1537,7 +1814,7 @@ function atualizarListaProjetos() {
   let projetos = Array.from(projetosMap.values());
   if (filtroProjetosModal) {
     const filtroLower = filtroProjetosModal.toLowerCase();
-    projetos = projetos.filter(p => p.id.toLowerCase().includes(filtroLower));
+    projetos = projetos.filter(p => p.id.toLowerCase().includes(filtroLower) || p.nome.toLowerCase().includes(filtroLower));
   }
   projetos.sort((a, b) => a.id.localeCompare(b.id));
   
@@ -1585,9 +1862,28 @@ function atualizarListaProjetos() {
     html += `
       <div class="projeto-card" onclick="filtrarProjetoNoMapa('${escapeHtml(projeto.id)}')">
         <div class="projeto-card-header">
-          <div class="projeto-id"><i class="fas fa-folder"></i> ${escapeHtml(projeto.id)}</div>
-          <div class="projeto-valor-editar"><button class="edit-valor-btn" onclick="event.stopPropagation(); abrirModalEditarValor('${escapeHtml(projeto.id)}')"><i class="fas fa-edit"></i> Editar Valor</button></div>
-          <div class="projeto-valor-exibido"><small>💰 VALOR DA OBRA</small><br>${formatarMoeda(projeto.valorObra)}</div>
+          <div class="projeto-id">
+            <i class="fas fa-folder"></i> ${escapeHtml(projeto.id)}
+            <button onclick="event.stopPropagation(); compartilharLocalizacaoProjeto('${escapeHtml(projeto.id)}')" 
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; cursor: pointer; padding: 6px 12px; border-radius: 20px; margin-left: 10px; font-size: 11px;" 
+                    title="Compartilhar Localização">
+              <i class="fas fa-map-marked-alt"></i> Localizar
+            </button>
+          </div>
+          
+          <div class="projeto-nome">
+            <i class="fas fa-info-circle"></i> ${escapeHtml(projeto.nome)}
+          </div>
+
+          <div class="projeto-valor-editar">
+            <button class="edit-valor-btn" onclick="event.stopPropagation(); abrirModalEditarValor('${escapeHtml(projeto.id)}')">
+              <i class="fas fa-edit"></i> Editar Valor
+            </button>
+          </div>
+          <div class="projeto-valor-exibido">
+            <span style="font-size: 12px; font-weight: 400; opacity: 0.9;">💰 VALOR DA OBRA</span><br>
+            ${formatarMoeda(projeto.valorObra)}
+          </div>
         </div>
         <div class="projeto-stats">
           <div class="projeto-stat"><span class="projeto-stat-value">${totalPostes}</span><span class="projeto-stat-label">POSTES</span></div>
@@ -1645,7 +1941,7 @@ function limparFiltroProjetos() {
 
 function exportarProjetosExcel() {
   const projetos = projetosListaCompleta;
-  const excelData = [["Projeto", "Total Postes", "Concluídos", "Em Andamento", "% Concluído", "Podas Pendentes", "LV Pendentes", "Total Podas (R$)", "Total LV (R$)", "Valor Obra (R$)", "% Gasto"]];
+  const excelData = [["Projeto", "Nome do Projeto", "Total Postes", "Concluídos", "Em Andamento", "% Concluído", "Podas Pendentes", "LV Pendentes", "Total Podas (R$)", "Total LV (R$)", "Valor Obra (R$)", "% Gasto"]];
   
   projetos.forEach(projeto => {
     const totalPostes = projeto.postes.length;
@@ -1655,7 +1951,7 @@ function exportarProjetosExcel() {
     const lvPendentes = projeto.postes.filter(p => /r\$ ?[\d.,]+/i.test((p.linhaViva || "")) && normalizarTexto(p.status) !== "concluído").length;
     const totalGasto = projeto.totalPodas + projeto.totalLinhaViva;
     const percentualGasto = projeto.valorObra > 0 ? (totalGasto / projeto.valorObra * 100).toFixed(1) : 0;
-    excelData.push([projeto.id, totalPostes, concluidos, totalPostes - concluidos, `${percentual}%`, podasPendentes, lvPendentes, projeto.totalPodas.toFixed(2), projeto.totalLinhaViva.toFixed(2), projeto.valorObra.toFixed(2), `${percentualGasto}%`]);
+    excelData.push([projeto.id, projeto.nome, totalPostes, concluidos, totalPostes - concluidos, `${percentual}%`, podasPendentes, lvPendentes, projeto.totalPodas.toFixed(2), projeto.totalLinhaViva.toFixed(2), projeto.valorObra.toFixed(2), `${percentualGasto}%`]);
   });
 
   const csvContent = excelData.map(row => row.join(",")).join("\n");
@@ -1689,13 +1985,13 @@ function exportarProjetosPDF() {
   doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, 15, y);
   y += 12;
   
-  const colunas = ["Projeto", "Postes", "Conc.", "Andam.", "%", "Podas Pend.", "LV Pend.", "Total Podas", "Total LV", "Valor Obra"];
-  const colWidths = [40, 12, 12, 12, 10, 18, 18, 25, 25, 30];
+  const colunas = ["Projeto", "Nome", "Postes", "Conc.", "Andam.", "%", "Podas Pend.", "LV Pend.", "Total Podas", "Total LV", "Valor Obra"];
+  const colWidths = [35, 35, 10, 10, 10, 8, 15, 15, 20, 20, 25];
   
   doc.setFillColor(67, 97, 238);
   doc.rect(15, y - 5, pageWidth - 30, 8, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   let x = 15;
   colunas.forEach((col, idx) => {
     doc.text(col, x + 1, y);
@@ -1730,15 +2026,16 @@ function exportarProjetosPDF() {
     const podasPendentes = projeto.postes.filter(p => /r\$ ?[\d.,]+/i.test((p.servicosPodas || "")) && normalizarTexto(p.status) !== "concluído").length;
     const lvPendentes = projeto.postes.filter(p => /r\$ ?[\d.,]+/i.test((p.linhaViva || "")) && normalizarTexto(p.status) !== "concluído").length;
     x = 15;
-    doc.text(projeto.id.substring(0, 25), x + 1, y); x += colWidths[0];
-    doc.text(totalPostes.toString(), x + 1, y); x += colWidths[1];
-    doc.text(concluidos.toString(), x + 1, y); x += colWidths[2];
-    doc.text((totalPostes - concluidos).toString(), x + 1, y); x += colWidths[3];
-    doc.text(percentual + "%", x + 1, y); x += colWidths[4];
-    doc.text(podasPendentes.toString(), x + 1, y); x += colWidths[5];
-    doc.text(lvPendentes.toString(), x + 1, y); x += colWidths[6];
-    doc.text(formatarMoeda(projeto.totalPodas), x + 1, y); x += colWidths[7];
-    doc.text(formatarMoeda(projeto.totalLinhaViva), x + 1, y); x += colWidths[8];
+    doc.text(projeto.id.substring(0, 20), x + 1, y); x += colWidths[0];
+    doc.text(projeto.nome.substring(0, 20), x + 1, y); x += colWidths[1];
+    doc.text(totalPostes.toString(), x + 1, y); x += colWidths[2];
+    doc.text(concluidos.toString(), x + 1, y); x += colWidths[3];
+    doc.text((totalPostes - concluidos).toString(), x + 1, y); x += colWidths[4];
+    doc.text(percentual + "%", x + 1, y); x += colWidths[5];
+    doc.text(podasPendentes.toString(), x + 1, y); x += colWidths[6];
+    doc.text(lvPendentes.toString(), x + 1, y); x += colWidths[7];
+    doc.text(formatarMoeda(projeto.totalPodas), x + 1, y); x += colWidths[8];
+    doc.text(formatarMoeda(projeto.totalLinhaViva), x + 1, y); x += colWidths[9];
     doc.text(formatarMoeda(projeto.valorObra), x + 1, y);
     y += 5;
   });
@@ -1798,7 +2095,7 @@ window.fecharModalEditarValor = fecharModalEditarValor;
 window.salvarValorObra = salvarValorObra;
 window.recentrarMapa = recentrarMapa;
 window.alternarVisualizacaoMapa = alternarVisualizacaoMapa;
-
+window.compartilharLocalizacaoProjeto = compartilharLocalizacaoProjeto;
 
 </script>
 </body>
